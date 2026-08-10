@@ -1,0 +1,4 @@
+# Nix configuration for container environments
+# Enables experimental features and sets up binary caches
+
+experimental-features = nix-command flakes

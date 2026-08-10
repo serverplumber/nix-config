@@ -1,0 +1,42 @@
+# restic --exclude-file. Shared by `just restic_init` (the one-shot
+# pre-migration run) and services.restic.backups.home (modules/backup.nix), so
+# the manual and automated backups can never disagree about what is skipped.
+#
+# Rule for adding things here: exclude only what is RECONSTRUCTIBLE from
+# something else that is itself backed up or public. When in doubt, back it up.
+
+# --- the big one -------------------------------------------------------------
+# ~96 GiB of podman images, measured 2026-08-08. All pullable from registries
+# or rebuildable from Containerfiles. This single line is most of the win.
+.local/share/containers
+
+# --- caches ------------------------------------------------------------------
+.cache
+.local/share/Trash
+.local/state/nix
+.local/share/uv/python
+.npm
+.cargo/registry
+.gradle/caches
+.m2/repository
+
+# --- per-project build output ------------------------------------------------
+# Sources are in git; these are derived.
+**/node_modules
+**/__pycache__
+**/.venv
+**/.direnv
+**/target/debug
+**/target/release
+**/result
+**/result-*
+
+# --- things being deliberately abandoned in the migration --------------------
+# Present today, will not exist on NixOS. See package-migration.md §4.
+AppImages
+.local/share/JetBrains/Toolbox
+
+# --- never ------------------------------------------------------------------
+# /nix is a build artifact and enormous. Listed for the reader's benefit; the
+# backup paths do not include it anyway.
+/nix
