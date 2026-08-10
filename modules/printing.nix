@@ -15,7 +15,7 @@
   # The `lp` group is already in users.users.stablefly.extraGroups (added for
   # the scanner, needed here too).
   #
-  # ⚠️ Okular cannot print. Its nixpak sandbox (home/gui.nix) cuts the CUPS
-  # socket. That is independent of anything in this file — if PDF printing
-  # matters, the hole has to be punched on the sandbox side.
+  # Okular's sandbox has /run/cups/cups.sock and /etc/cups bound explicitly
+  # (home/gui.nix) so it can print despite being boxed. If the printer list is
+  # empty there but populated elsewhere, that bind is the thing to check.
 }

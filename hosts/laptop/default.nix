@@ -18,6 +18,7 @@
     ../../modules/printing.nix
     ../../modules/nix-ld.nix
     ../../modules/backup.nix
+    ../../modules/cuda.nix
   ];
 
   networking.hostName = "laptop";

@@ -6,19 +6,30 @@ Bootloader: GRUB (chosen for cross-disk Windows detection).
 This document is written for handoff — §11 is the task list for an agent
 working in the repo. Read §0 and §1 first; they contain hard invariants.
 
-**Status (2026-08-08):** the tree in §4 has been scaffolded at the repo root.
-The files under `hosts/`, `modules/` and `home/` are the source of truth; the
-code blocks in §5–§8 are commentary and may lag. Nothing has been evaluated —
-there is no `nix` on the Bluefin side.
+**Status (2026-08-10).** The tree in §4 is built, committed, and — since the
+commit unblocked `flake lock` — **evaluated**. Four of five flake outputs
+evaluate cleanly; `nixosConfigurations.laptop` throws on the
+`hardware-configuration.nix` placeholder by design, which is the only
+remaining failure and needs the ISO. See §8a for the evaluation results and
+§8b for what the flake produces.
 
-Two decisions since v2 changed the plan materially:
+Nothing has been *built* or installed. The machine still runs Bluefin.
 
-- **The desktop is no longer labwc.** It is niri + Hyprland, both installed
-  and selected at the greeter, with noctalia as the shell for either. §7 and
-  §8's labwc blocks are superseded by **§7a**; `home/labwc.nix` is deleted.
+Decisions since v2 that changed the plan materially:
+
+- **The desktop is no longer labwc.** niri + Hyprland + Plasma, all three
+  offered by the greeter, with noctalia as the shell for the two tiling
+  sessions. §7/§8's labwc blocks are superseded by **§7a**.
 - **nixpkgs is the only package channel** — no flatpak, homebrew or
-  AppImages. Triage of the 196 brew formulae / 53 flatpaks / AppImages /
-  JetBrains IDEs is in `package-migration.md`.
+  AppImages. All 105 attribute names verified against nixpkgs-unstable.
+- **Windows is reached via the firmware picker**, not GRUB. os-prober is off,
+  so nothing in this procedure touches `nvme0n1` at all — O-1.
+- **Five apps are sandboxed** with nixpak; browsers and hardware-facing apps
+  deliberately are not — see `package-migration.md` §1c.
+- **whisperx runs on the GPU** via a targeted second nixpkgs instance — O-12.
+
+The code blocks in §5–§8 are commentary and lag the files. `hosts/`,
+`modules/` and `home/` are the source of truth.
 
 ---
 
@@ -249,34 +260,45 @@ As built, at the repo root (not in a nested `nixos-config/`):
 ```
 nix-config/
 ├── flake.nix                           # 5 outputs — see §8b
-├── justfile                            # every check/build wrapped
+├── flake.lock                          # 29 nodes; Hyprland pulls 13
+├── justfile                            # every check/build/backup wrapped
+├── backup-excludes.txt                 # shared by just + the NixOS job
 ├── .nix-config                         # nix.conf for the container
 ├── .gitignore
 ├── bluefin-to-nixos-migration.md       # this file
-├── package-migration.md                # brew/flatpak/AppImage → nixpkgs triage
+├── package-migration.md                # inventory triage + sandbox tiers
 ├── hosts/
 │   └── laptop/
 │       ├── default.nix                # portable config — boots in a VM
 │       ├── machine.nix                # BARE METAL ONLY: imports the 3 below
 │       ├── hardware-configuration.nix # PLACEHOLDER — throws until generated
 │       ├── filesystems.nix            # hand-written, source of truth
-│       └── boot.nix                   # GRUB
+│       └── boot.nix                   # GRUB, os-prober off — O-1
 ├── modules/
-│   ├── desktop.nix                    # greetd/tuigreet, foot, portals — §7a
-│   ├── niri.nix                       # niri-flake, scrollable tiling
+│   ├── desktop.nix                    # greetd/tuigreet 3-session picker — §7a
+│   ├── niri.nix                       # niri-flake module, pkgs.niri package
 │   ├── hyprland.nix                   # Hyprland flake + cachix
 │   ├── plasma.nix                     # third session, known-good fallback
 │   ├── noctalia.nix                   # shell's backing services + cachix
 │   ├── audio.nix                      # pipewire
 │   ├── hardware-keys.nix              # brightness/media key plumbing
-│   ├── nvidia.nix                     # hybrid Intel/NVIDIA, PRIME offload — O-6
-│   └── containers.nix                 # rootless podman — O-7
+│   ├── nvidia.nix                     # hybrid PRIME offload — O-6/O-10
+│   ├── cuda.nix                       # CUDA cache only — O-12
+│   ├── obs.nix                        # v4l2loopback for the virtual camera
+│   ├── containers.nix                 # rootless podman — O-7
+│   ├── network.nix                    # tailscale (+ ProtonVPN conflict note)
+│   ├── printing.nix                   # CUPS + avahi discovery
+│   ├── scanning.nix                   # SANE + sane-airscan
+│   ├── nix-ld.nix                     # FHS loader for uv/foreign binaries — O-13
+│   └── backup.nix                     # restic job
 └── home/
     ├── default.nix
-    ├── cli.nix                        # vim, hx, uv, eza, glow, starship, mdformat
-    ├── niri.nix                       # typed settings, keybinds — §7a
+    ├── cli.nix                        # user CLI + GPU whisperx
+    ├── dev.nix                        # direnv, forges, linters, JetBrains
+    ├── gui.nix                        # 6 nixpak-sandboxed + the rest plain
+    ├── niri.nix                       # typed settings, outputs, keybinds
     ├── hyprland.nix                   # matching keybinds
-    └── noctalia.nix                   # shell, shared by both sessions
+    └── noctalia.nix                   # shell, shared by both tiling sessions
 ```
 
 `hardware-configuration.nix` is committed as a bare `throw` carrying the
@@ -714,8 +736,12 @@ starts failing on hardware specifics, something leaked out of `machine.nix`.
 | `formatter` | `fmt` | `nix fmt` works |
 
 `just verify` runs the two checks that work *before* the hardware file
-exists: `parse` (offline, and the only check that also works without git) and
-`fmt-check`.
+exists: `parse` (offline, and the only one that also works without git) and
+`fmt-check`. `just have <attr>...` answers "does this package exist" against
+real nixpkgs; `just nix <args>` is a passthrough with the flags baked in.
+
+Backup targets: `just restic_init <dest>` and `just restic_check <dest>` —
+see §2.4.
 
 ### On the ISO
 
@@ -911,17 +937,41 @@ Consequences not yet reflected in the scaffold:
 - The GNOME accessory apps assume services niri/Hyprland do not start
   (evolution-data-server, dconf, gnome-keyring). Do not bulk-install.
 
-### O-9 — libvirt/swtpm usage is unaccounted for
+### O-9 — RESOLVED: there are no VMs
 
-Current group membership is `wheel dialout docker libvirt`, and the one
-hand-placed override on `var` is `swtpm` — together that reads as TPM-backed
-VMs under libvirt. Nothing in §5–§8 provides `virtualisation.libvirtd`, and
-it was left out of the scaffold on purpose rather than guessed at. If those
-VMs matter, their disk images' location needs checking too: anything under
-`/var/lib/libvirt` is on the `var` subvolume and dies at §10.
+Measured 2026-08-10. The `libvirt` group membership and the hand-placed
+`swtpm` override looked like TPM-backed VMs. They were a failed experiment —
+nothing was ever created:
 
-`dialout` suggests serial hardware (the qFlipper AppImage supports this) —
-`dialout` is now in `extraGroups` in `hosts/laptop/default.nix`.
+```
+virsh -c qemu:///system  list --all   -> empty
+virsh -c qemu:///session list --all   -> empty
+systemctl is-active  libvirtd         -> inactive
+systemctl is-enabled libvirtd         -> disabled
+du -sh /var/lib/libvirt               -> 0
+find ~ -name '*.qcow2' -o -name '*.vmdk' ... (>10M)  -> nothing
+```
+
+`~/.config/libvirt/qemu/{nvram,save,snapshot,...}` exists but is entirely
+empty, and its mtime is the moment the probe above ran — `virsh` created the
+skeleton itself. Not evidence of prior use.
+
+**Consequences:**
+
+- No `virtualisation.libvirtd` in the config. Nothing to migrate.
+- Nothing at risk in §10 — `/var/lib/libvirt` is empty, so deleting the `var`
+  subvolume loses nothing here.
+- The `libvirt` group is vestigial and is deliberately absent from
+  `users.users.stablefly.extraGroups`.
+- The `swtpm` override on `var` — the one hand-placed file that made this
+  whole thread worth checking — was presumably layered so Windows 11 guests
+  could satisfy the TPM 2.0 requirement. It was never used. It goes with the
+  subvolume.
+
+This closes the last unknown on `var`. Everything there is now accounted for:
+18 GiB system flatpaks (all dropped), 4.1 GiB logs, the ostree deploy tree,
+the swtpm override, and an empty libvirt skeleton. **Nothing on `var` is being
+carried forward.**
 
 ### O-10 — which GPU the compositor renders on — **MEASURED, not open**
 
@@ -1062,7 +1112,7 @@ external display is the first thing to check in that session. If Hyprland
 misbehaves and niri does not, this is the difference; do not conclude the
 driver config in `modules/nvidia.nix` is wrong.
 
-### O-12 — CUDA under PRIME offload
+### O-12 — CUDA under PRIME offload (whisperx RESOLVED)
 
 O-10a's power argument only holds if compute still works when the dGPU is
 asleep. It does, but two details are easy to get wrong.
@@ -1129,7 +1179,48 @@ still fails, the cause is the toolkit version trap above, not labelling.
 Consequence for §10: whatever their history, the images respond correctly to
 the flag today. Do not discard them before re-testing on NixOS.
 
-Not configured: `nixpkgs.config.cudaSupport`. It rebuilds a large part of the
+#### RESOLVED 2026-08-10 — whisperx runs on the GPU
+
+`pkgs.whisperx` links a CPU-only torch. Fixed by instantiating a **second**
+nixpkgs with `cudaSupport = true` and taking whisperx from it
+(`home/cli.nix`), rather than turning cudaSupport on globally.
+
+Three things made this cheap, all measured rather than assumed:
+
+| Path | In `cache.nixos-cuda.org`? |
+|---|---|
+| `python3.14-whisperx-3.8.6` | ✅ 200 |
+| `ctranslate2-4.8.1` (CUDA) | ✅ 200 |
+| `python3.14-torch-2.12.0` (CUDA) | ✅ 200 |
+
+So the whole chain is a download, not a build — torch alone is 215 MB, and
+compiling it locally would have been hours. `modules/cuda.nix` adds the
+substituter and key.
+
+⚠️ **The cache moved.** `cuda-maintainers.cachix.org` 404s for current paths;
+`cache.nixos-cuda.org` is live. Key:
+`cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M=`
+
+Two deliberate non-choices, both about preserving cache hits:
+
+- **No global `cudaSupport`.** It would rebuild ffmpeg, opencv and everything
+  else carrying the flag — mostly *not* in the CUDA cache — to accelerate one
+  program.
+- **No `cudaCapabilities = [ "8.9" ]`** despite the 4070 being Ada. Narrowing
+  it would cut build size but changes every derivation hash, turning every
+  cache hit into a local build. The defaults are what the cache holds.
+
+Verify on first boot:
+
+```bash
+python -c 'import torch; print(torch.cuda.is_available())'
+whisperx --device cuda <file>
+```
+
+Undocked, the first call wakes the dGPU and it suspends again afterwards —
+that is O-10a working, not a fault.
+
+Still not configured globally: `nixpkgs.config.cudaSupport`. It rebuilds a large part of the
 package set against CUDA and is only worth it for host-native CUDA Python.
 The container path above avoids needing it.
 
@@ -1147,7 +1238,7 @@ neither was verified. If the panel looks washed out or dim after migrating,
 this is why — not the driver.
 
 
-### O-13 — uv needs an FHS loader
+### O-13 — RESOLVED: nix-ld enabled for uv
 
 Dev environments are **expected to be rebuilt, not migrated** — decided, not
 a problem. `uv.lock` is in git, `uv sync` recreates venvs, ~15 minutes per
@@ -1163,12 +1254,17 @@ $ readelf -l ~/.local/share/uv/python/cpython-3.13.1-*/bin/python3.13
 ```
 
 NixOS has no such path, so a **freshly downloaded** uv Python will not run
-either — deleting the old interpreters does not avoid this. Fix, not
-currently set:
+either — deleting the old interpreters does not avoid this. **Now set**, in
+`modules/nix-ld.nix`, with a starter `libraries` list covering what native
+Python wheels reach for most often:
 
 ```nix
 programs.nix-ld.enable = true;
 ```
+
+The `libraries` list is the part that takes iteration — run the thing, read
+`libfoo.so.N: cannot open shared object file`, add the package that ships it.
+`nix-index` is the tool for that lookup.
 
 The alternative is pointing uv at a nixpkgs interpreter, which gives up uv's
 Python version management. `nix-ld` was previously noted only as a JetBrains
@@ -1220,28 +1316,28 @@ Done on the Bluefin side (2026-08-07):
 Blocked until the ISO / real hardware:
 
 - [ ] Generate `hardware-configuration.nix` with `--no-filesystems` and
-      replace the placeholder — the placeholder is a `throw`, so evaluation
-      fails loudly with the command in the error message until this is done
-- [x] `system.stateVersion` resolved — `26.11`, verified against
-      `lib.trivial.release`. Never touch it again
-- [ ] `nix flake check` and `nixos-rebuild build --flake .#laptop`. Syntax and
-      formatting are now verified from the container (§8a); **full evaluation
-      is still blocked** on the hardware file.
-      Option names taken from this document on faith and still unverified:
-      `programs.eza.icons = "auto"`, `pkgs.greetd.tuigreet`, all of
-      `modules/nvidia.nix`, the whole niri/Hyprland/noctalia option surface in
-      §7a, and — load-bearing —
-      `config.services.displayManager.sessionData.desktops` in
-      `modules/desktop.nix`. If that attribute path is wrong on this nixpkgs
-      pin, greetd comes up with an empty session list and cannot launch
-      anything (recoverable from a TTY, but it reads as "the compositors
-      didn't install")
-- [ ] Set a real password for `stablefly` and delete `initialPassword` from
+      replace the placeholder. It is a `throw`, so evaluation fails loudly
+      with the command in the error message until this is done. **This is the
+      only thing `nix flake check` still fails on.**
+- [ ] `just vm` — boot the desktop with no disks. Now possible, and the
+      highest-information step left before the migration
+- [ ] `just iso` — build the installer carrying this flake
+- [ ] Set a real password and delete `initialPassword` from
       `hosts/laptop/default.nix`
-- [ ] Review `package-migration.md` and land the approved packages
+- [ ] Set `repository` in `modules/backup.nix` (currently `sftp:CHANGEME:`)
+- [ ] Point Obsidian's sandbox at the real vault (`home/gui.nix` guesses
+      `~/Documents`)
 - [ ] Resolve O-1 through O-13 as they surface on real hardware
-- [ ] Pick a compositor after living in both; delete the loser's
-      `modules/` + `home/` file and its flake input
+
+Done and verified (2026-08-09/10):
+
+- [x] `flake lock` — all 5 inputs resolve
+- [x] `homeConfigurations`, `laptop-vm`, `installer`, `devShells`, `formatter`
+      all evaluate
+- [x] 105 package attribute names verified; 7 were wrong, all corrected
+- [x] `system.stateVersion` = `26.11`, measured not guessed
+- [x] nix-ld enabled (O-13); whisperx on GPU (O-12); os-prober off (O-1);
+      libvirt confirmed unused (O-9)
 
 ---
 
@@ -1259,7 +1355,11 @@ Blocked until the ISO / real hardware:
 - [ ] `nixos` subvolume created
 - [ ] `hardware-configuration.nix` carries no `fileSystems`
 - [ ] Repo is a git repo with everything staged (`git add -A` — your step)
-- [ ] Flake evaluates at all (`nix flake check`) — never yet attempted
+- [x] Flake evaluates — 4 of 5 outputs clean; `laptop` blocked only by the
+      hardware placeholder
+- [ ] `whisperx --device cuda` actually uses the GPU (O-12)
+- [ ] `programs.nix-ld` lets a uv-managed python run (O-13)
+- [ ] Printing works (CUPS + avahi), scanning works (SANE + fresh login)
 - [ ] Install completed, first boot reached
 - [ ] `/home/stablefly` contents verified present and owned by uid 1000
 - [ ] Windows boots via the FIRMWARE PICKER (no GRUB entry by design — O-1)

@@ -57,14 +57,18 @@ let
         };
     }).config.env;
 
-  ### Obsidian — vault only. Electron, indexes everything it can see.
+  ### Obsidian — one vault directory, nothing else. Electron, and it indexes
+  ### everything it can reach, so the narrower this is the better.
+  ###
+  ### The vault is not on this machine yet — most writing happens elsewhere.
+  ### ~/Documents/obsidian_vault is created empty (see home.file below) so the
+  ### bind target exists on first launch; drop the real vault in there later
+  ### and nothing needs changing.
   obsidian = sandbox {
     package = pkgs.obsidian;
     appId = "md.obsidian.Obsidian";
-    # TODO: point this at the real vault. ~/Documents is a guess; if the vault
-    # lives elsewhere, add it here or Obsidian opens to an empty picker.
     rw = sloth: [
-      (sloth.concat' sloth.homeDir "/Documents")
+      (sloth.concat' sloth.homeDir "/Documents/obsidian_vault")
       (sloth.concat' sloth.homeDir "/.config/obsidian")
     ];
   };
@@ -96,8 +100,6 @@ let
   ### exfiltrate to — and PDFs can embed JS and remote-content fetches of their
   ### own accord, which this also kills.
   ###
-  ### Casualty to expect: printing. CUPS is reached over a socket the sandbox
-  ### cuts. If you print from Okular, that needs its own hole punched.
   okular = sandbox {
     package = pkgs.kdePackages.okular;
     appId = "org.kde.okular";
@@ -110,6 +112,21 @@ let
       (sloth.concat' sloth.homeDir "/.local/share/okular")
       (sloth.concat' sloth.homeDir "/.config/okularrc")
       (sloth.concat' sloth.homeDir "/.config/okularpartrc")
+
+      # Printing. CUPS is reached over this unix socket, which the sandbox
+      # otherwise cuts — the symptom is an empty printer list rather than an
+      # error. Qt/KDE talks to CUPS directly, so the portal dbus policy above
+      # does not cover it.
+      "/run/cups/cups.sock"
+    ];
+    ro = sloth: [
+      # PDFs living beside source. READ-ONLY on purpose: Okular never needs to
+      # write here, and ro means a poppler exploit cannot modify the source
+      # tree — which is most of the point of boxing this one up.
+      (sloth.concat' sloth.homeDir "/code")
+
+      # CUPS client config, so it knows which server to talk to.
+      "/etc/cups"
     ];
   };
 
@@ -163,8 +180,10 @@ in
     obs-studio # screen capture, camera, virtual device
     proton-vpn # renamed from protonvpn-gui; rewrites routes and DNS — see modules/network.nix
 
-    ### Not sandboxed yet. It is a plausible Tier 1 candidate later (financial
-    ### data, no reason to see ~/.ssh) but it was not on the confirmed list.
+    ### Deliberately NOT sandboxed, and not a future candidate either. It is
+    ### used as a dev artifact — the front end to the accounting in `dirt` —
+    ### so it has to reach dev data and test fixtures freely. Real financial
+    ### data lives elsewhere. Jailing it would only make the work harder.
     gnucash
 
     ### Tier 3 — both want hardware a sandbox would take away
@@ -181,6 +200,11 @@ in
     ### A sandbox would mean binding every directory you ever keep media in.
     vlc
   ]);
+
+  # Creates ~/Documents/obsidian_vault so the sandbox bind target exists before
+  # the vault itself does. Without it, nixpak binds a non-existent path and
+  # Obsidian opens to an empty picker.
+  home.file."Documents/obsidian_vault/.keep".text = "";
 
   # Browsers are installed the ordinary way on purpose. They keep full access
   # to $HOME, same as on any other distro — sandboxing them is Tier 2 and is

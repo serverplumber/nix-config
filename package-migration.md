@@ -184,25 +184,31 @@ Confirmed in extensive use, so these are wrapped and installed:
 
 | App | nixpkgs | Network | Filesystem it can see |
 |---|---|---|---|
-| Obsidian | `obsidian` | yes | `~/Documents`, `~/.config/obsidian` |
+| Obsidian | `obsidian` | yes | `~/Documents/obsidian_vault`, `~/.config/obsidian` |
 | Signal | `signal-desktop` | yes | `~/.config/Signal`, `~/Downloads` |
 | Telegram | `telegram-desktop` | yes | `~/.local/share/TelegramDesktop`, `~/Downloads` |
-| Okular | `kdePackages.okular` | **no** | `~/Documents`, `~/Downloads`, its docdata + rc files |
+| Okular | `kdePackages.okular` | **no** | rw: `~/Documents`, `~/Downloads`, docdata + rc, CUPS socket · ro: `~/code`, `/etc/cups` |
 | LibreOffice | `libreoffice-fresh` | **no** | `~/Documents`, `~/Downloads` |
 
 Nothing else from `$HOME` — no `~/.ssh`, no `~/code`, no `~/.aws`.
 
-⚠️ **Obsidian's vault path is a guess** (`~/Documents`). If the vault lives
-elsewhere, add it to `rw` in `home/gui.nix` or Obsidian opens to an empty
-picker.
+**Obsidian** is bound to `~/Documents/obsidian_vault` only, not all of
+`~/Documents`. The vault is not on this machine yet — most writing happens
+elsewhere — so `home/gui.nix` creates the directory empty. Drop the real vault
+in later; nothing needs changing.
 
 **Okular is the strongest case in the file.** Untrusted PDFs from libgen go
 into poppler — a large C++ parser with a long CVE history. No network means a
 successful exploit has nowhere to phone home and nothing to exfiltrate to, and
 it also kills PDFs that fetch remote content or run embedded JS on their own.
 
-⚠️ **Printing will break.** CUPS is reached over a socket the sandbox cuts. If
-you print from Okular, that needs a hole punched for it.
+**Printing works** — `/run/cups/cups.sock` and `/etc/cups` are bound
+explicitly. Qt/KDE talks to CUPS directly rather than through the portal, so
+the portal dbus policy does not cover this and the socket had to be named.
+
+**`~/code` is bound READ-ONLY.** Okular reads PDFs that live beside source but
+never needs to write there, and ro means a poppler exploit cannot modify the
+source tree — which is most of the reason for boxing this one at all.
 
 Papers was also "dunno" — not installed, and Okular covers PDFs anyway.
 
@@ -246,6 +252,9 @@ capture:
 - **PrusaSlicer** — USB to the printer, plus GPU
 - **anything CLI** — different threat model; devshells and containers already
   cover it
+- **GnuCash** — not a candidate, now or later. It is used as a dev artifact
+  (the front end to the accounting in `dirt`), so it must reach dev data and
+  fixtures freely. Real financial data is elsewhere.
 - **Dolphin** — a file manager's job is seeing all of `$HOME`
 - **OBS** — installed, with `v4l2loopback` wired up in `modules/obs.nix`
 
@@ -308,11 +317,14 @@ leave the global profile. Per-project `flake.nix` + `devShells`, activated by
 `onnx` stack, and ~55 GiB of CUDA container images (`nvcr.io/nvidia/pytorch`
 22 GB, `sglang` 19.7 GB, `vllm` 10.5 GB).
 
-Deferred by decision. **O-12** in the runbook already records what was
-established: the SELinux finding, the nvidia-container-toolkit 1.17.8 CDI
-trap, and that the CUDA binary cache moved to `cache.nixos-cuda.org`. Three
-paths exist — pure-nixpkgs `cudaSupport`, devshell + `uv` wheels, or
-containers — and choosing between them blocks nothing else here.
+**whisperx is done — GPU accelerated (2026-08-10).** `home/cli.nix` takes it
+from a second nixpkgs instance with `cudaSupport = true`, so only whisperx and
+its chain are CUDA-built. whisperx, CUDA ctranslate2 and CUDA torch are all
+prebuilt in `cache.nixos-cuda.org`, so it is a download not a build. See O-12.
+
+Still deferred, and fine to leave: `sglang` and `vllm`. Their dependency
+graphs are not worth packaging; run them from the existing container images
+with `--device nvidia.com/gpu=all` now that the toolkit is enabled.
 
 **Correction:** `whisperx` IS in nixpkgs (3.8.6) — verified with `nix search`
 against real nixpkgs, not assumed. Earlier notes here claimed otherwise. It is
