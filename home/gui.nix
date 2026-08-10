@@ -161,7 +161,7 @@ in
     ### Tier 3 — sandboxing these would fight what they are for
     kdePackages.dolphin # needs to see all of $HOME; that IS the job
     obs-studio # screen capture, camera, virtual device
-    protonvpn-gui # rewrites routes and DNS — see modules/network.nix
+    proton-vpn # renamed from protonvpn-gui; rewrites routes and DNS — see modules/network.nix
 
     ### Not sandboxed yet. It is a plausible Tier 1 candidate later (financial
     ### data, no reason to see ~/.ssh) but it was not on the confirmed list.

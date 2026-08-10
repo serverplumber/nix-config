@@ -622,6 +622,37 @@ podman run --rm \
 `:z` is the SELinux relabel — the same class of problem as O-12's container
 GPU failure, and the reason krump's justfile has it everywhere.
 
+### Results of the first real evaluation, 2026-08-09
+
+Run after the initial commit (flakes only see tracked files). Six real errors,
+none of which `--parse` or `nixfmt` could have caught:
+
+| Finding | Fix |
+|---|---|
+| **niri-flake's `niri-stable` AND `niri-unstable` both fail to evaluate** — `libdisplay-info_0_2` was removed from nixpkgs; the flake's package pin has drifted from ours | `programs.niri.package = pkgs.niri` in **both** `modules/niri.nix` and `home/niri.nix` |
+| **niri options declared twice** — importing `niri.homeModules.niri` explicitly is *not* idempotent; the NixOS module pulls it in under a different key | import moved to the standalone `homeConfigurations` output only |
+| `protonvpn-gui` renamed | → `proton-vpn` |
+| `system.stateVersion` / `home.stateVersion` were `26.05` | → **`26.11`**, confirmed via `lib.trivial.release` |
+| `nixfmt-rfc-style` deprecated | → `pkgs.nixfmt` |
+| — | |
+
+Current status of every output:
+
+| Output | Evaluates |
+|---|---|
+| `homeConfigurations.stablefly` | ✅ — validates nixpak, the niri schema, all 5 sandboxes |
+| `nixosConfigurations.laptop-vm` | ✅ — validates all 13 system modules |
+| `nixosConfigurations.installer` | ✅ |
+| `devShells`, `formatter` | ✅ |
+| `nixosConfigurations.laptop` | ❌ **by design** — the `hardware-configuration.nix` placeholder throws |
+
+`nix flake check` therefore fails, and will keep failing, until the hardware
+file is generated on the ISO. That single throw is the only remaining failure.
+
+Nothing has been *built* — these are `.drvPath` evaluations, which force full
+module evaluation and catch every option and type error without downloading
+Plasma, two compositors, the NVIDIA driver and three JetBrains IDEs.
+
 ### What this can and cannot check
 
 | Check | Needs network | Status |
@@ -1191,9 +1222,8 @@ Blocked until the ISO / real hardware:
 - [ ] Generate `hardware-configuration.nix` with `--no-filesystems` and
       replace the placeholder — the placeholder is a `throw`, so evaluation
       fails loudly with the command in the error message until this is done
-- [ ] Verify `system.stateVersion`: `26.05` is what this document specified,
-      but nixos-unstable in Aug 2026 may report `26.11`. Match the installed
-      release, then never touch it again
+- [x] `system.stateVersion` resolved — `26.11`, verified against
+      `lib.trivial.release`. Never touch it again
 - [ ] `nix flake check` and `nixos-rebuild build --flake .#laptop`. Syntax and
       formatting are now verified from the container (§8a); **full evaluation
       is still blocked** on the hardware file.

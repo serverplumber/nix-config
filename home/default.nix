@@ -9,6 +9,6 @@
   ];
   home.username = "stablefly";
   home.homeDirectory = "/home/stablefly";
-  home.stateVersion = "26.05";
+  home.stateVersion = "26.11"; # matches nixpkgs release, verified
   programs.home-manager.enable = true;
 }

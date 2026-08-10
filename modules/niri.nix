@@ -5,12 +5,30 @@
   # two define the same option path. Never enable both.
   programs.niri = {
     enable = true;
-    package = pkgs.niri-stable; # niri-unstable = latest main, don't
-  };
 
-  # niri-flake enables niri.cachix.org by default, so niri is fetched rather
-  # than compiled. If you ever want to opt out of the cache, set
-  # `programs.niri.package = pkgs.niri;` to take nixpkgs' build instead.
+    # nixpkgs' build, NOT niri-flake's niri-stable/niri-unstable.
+    #
+    # Measured 2026-08-09: both of the flake's packages fail to evaluate
+    # against the pinned nixpkgs —
+    #
+    #   error: `libdisplay-info_0_2` has been removed as it was unused in
+    #   Nixpkgs. Consider upgrading to `libdisplay-info_0_3` ...
+    #
+    # niri-flake pins its own nixpkgs for the package derivations, and that
+    # pin has drifted from ours. `pkgs.niri` is upstream's documented escape
+    # hatch and evaluates cleanly.
+    #
+    # ***
+    #
+    # What this costs: niri.cachix.org no longer applies, so niri comes from
+    # cache.nixos.org instead. That is fine — it is cached there too. What it
+    # keeps: the flake's MODULE, which is the reason for the input at all
+    # (typed `programs.niri.settings`, polkit/keyring wiring).
+    #
+    # Revisit after a `just update`; if the flake catches up, switching back
+    # to `pkgs.niri-stable` is a one-line change.
+    package = pkgs.niri;
+  };
 
   # The module also sets up polkit, an auth agent, and the keyring. Those are
   # shared with the Hyprland session; whichever starts first wins and both

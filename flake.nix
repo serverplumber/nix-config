@@ -152,19 +152,25 @@
       homeConfigurations.stablefly = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
         extraSpecialArgs = { inherit inputs; };
-        modules = [ ./home ];
+        modules = [
+          # Only the standalone path needs this. Under nixosConfigurations,
+          # niri-flake's NixOS module imports the HM module itself, and adding
+          # it here too declares every niri option twice. See home/niri.nix.
+          inputs.niri.homeModules.niri
+          ./home
+        ];
       };
 
       ### `nix develop` / `just shell`
       devShells.${system}.default = pkgs.mkShell {
         packages = with pkgs; [
-          nixfmt-rfc-style
+          nixfmt
           nix-tree
           just
         ];
       };
 
       ### `nix fmt`
-      formatter.${system} = pkgs.nixfmt-rfc-style;
+      formatter.${system} = pkgs.nixfmt;
     };
 }

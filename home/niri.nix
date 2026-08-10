@@ -1,15 +1,31 @@
 {
   config,
-  inputs,
   pkgs,
   ...
 }:
 {
-  # Importing this is idempotent — niri-flake's NixOS module already pulls the
-  # home-manager module in when it detects home-manager. The module system
-  # dedupes by key, so being explicit costs nothing and does not depend on
-  # that auto-detection continuing to work.
-  imports = [ inputs.niri.homeModules.niri ];
+  # DO NOT import inputs.niri.homeModules.niri here.
+  #
+  # An earlier version did, on the assumption that the module system dedupes
+  # by key so a second import would be free. It is not: niri-flake's NixOS
+  # module pulls the HM module in via its own nixos/common.nix under a
+  # different key, so importing it again declares every option twice —
+  #
+  #   error: The option `home-manager.users.stablefly.programs.niri.finalConfig'
+  #   in `.../nixos/common.nix' is already declared in `.../home/niri.nix'.
+  #
+  # ***
+  #
+  # The NixOS path gets the module automatically. The standalone
+  # homeConfigurations output has no NixOS module to do that, so flake.nix
+  # adds it there — and only there.
+
+  # Must be set HERE as well as in modules/niri.nix. The home-manager module
+  # carries its own `programs.niri.package`, and homeConfigurations.stablefly
+  # is standalone — it never sees the NixOS module, so the NixOS-side setting
+  # does not reach it. Same reason as there: niri-flake's niri-stable fails to
+  # evaluate against our nixpkgs pin (libdisplay-info_0_2 removed).
+  programs.niri.package = pkgs.niri;
 
   programs.niri.settings = {
     # Display layout, transcribed from the working GNOME config on Bluefin

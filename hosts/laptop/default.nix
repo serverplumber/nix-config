@@ -90,7 +90,8 @@
   nixpkgs.config.allowUnfree = true;
 
   # Match the release actually installed. Never bump this afterwards.
-  # TODO: verify against what `nixos-generate-config` emits on the ISO —
-  # nixos-unstable in Aug 2026 may report 26.11 rather than 26.05.
-  system.stateVersion = "26.05";
+  # Verified 2026-08-09: `lib.trivial.release` on the pinned nixpkgs is
+  # "26.11", and the built derivation is nixos-system-laptop-26.11.20260807.
+  # The earlier 26.05 was a guess and was wrong.
+  system.stateVersion = "26.11";
 }
