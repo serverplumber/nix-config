@@ -19,6 +19,10 @@ let
       cudaSupport = true;
     };
   };
+
+  # Anthropic's `ant` (Claude Developer Platform CLI) — not in nixpkgs, and
+  # pkgs.ant is a different program (Apache Ant). See pkgs/ant-cli.nix.
+  ant-cli = pkgs.callPackage ../pkgs/ant-cli.nix { };
 in
 {
   # User CLI only — things you would want on a machine you never wrote code on.
@@ -46,6 +50,8 @@ in
     [
       vim
       glow
+      claude-code
+      ant-cli
 
       ### search / navigate
       bat
