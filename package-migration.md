@@ -124,6 +124,16 @@ Not installed: `clapper`, `pinta`, `loupe`.
 | GnuCash | `gnucash` |
 | InvoiceNinja | ❌ not in nixpkgs — self-hosted web app, and you already have `localhost/invoiceninja` images. Run it from podman |
 
+**Occasional-use tools** — added 2026-08-10, unsandboxed (they open arbitrary
+files, same argument as VLC/Dolphin):
+
+| App | nixpkgs | Note |
+|---|---|---|
+| Krita | ✅ `krita` 6.0.2.1 | |
+| imv | ✅ `imv` 5.0.1 | fast, Wayland-native, keyboard-driven |
+| GNOME Calculator | ✅ `gnome-calculator` 50.0 | Basic/Advanced/**Financial**/Programming |
+| Qalculate | ✅ `qalculate-gtk` 5.12.0 | units, currency, symbolic — the power option |
+
 **Hardware & system**
 
 | Current | nixpkgs candidate |
@@ -428,6 +438,55 @@ the migration, but nothing on NixOS will run them:
 - **`/home` is a live subvolume** full of existing config. home-manager moves
   conflicting files aside via `backupFileExtension = "hm-bak"` (set in
   `flake.nix`), but expect that to fire a lot on the first switch.
+
+## 5b. TODO — not yet decided, not yet packaged
+
+Parked for later. Status checked against nixpkgs-unstable 2026-08-10.
+
+| Tool | In nixpkgs? | Notes |
+|---|---|---|
+| [yt-dlp](https://github.com/yt-dlp/yt-dlp) | ✅ `yt-dlp` 2026.07.04 | One line whenever wanted. No work required |
+| [gamdl](https://github.com/glomatico/gamdl) | ❌ | Python, on PyPI. Either a `uv tool` (works now that nix-ld is enabled — O-13) or a small `python3Packages.buildPythonApplication` |
+| [applemusic-downloader](https://github.com/wenfeng110402/applemusic-downloader) | ❌ | Not packaged anywhere; would need writing from scratch |
+
+`castlabs-electron` is also absent from nixpkgs, which matters for §5c below.
+
+---
+
+## 5c. Sidra — the Cider replacement worth watching
+
+[wimpysworld/sidra](https://github.com/wimpysworld/sidra) — Apple Music
+desktop client, created March 2026, actively developed (pushed 2026-08-10),
+release 0.4.0.
+
+Relevant because **Cider went commercial**: nixpkgs removed the original
+`cider` on 2026-07-22 as "unmaintained and archived upstream", and `cider-2`
+(confusingly, version 4.0.9.1) is unfree and pulled from Cider's own apt repo.
+Sidra is the free alternative to that.
+
+| | |
+|---|---|
+| Licence | **BlueOak-1.0.0** — permissive, no unfree flag needed |
+| Packaging | **Ships its own `flake.nix` + `flake.lock` + `nix/`** — consumable as a flake input directly, no packaging work |
+| In nixpkgs | ❌ — but the flake makes that irrelevant |
+| Approach | Wraps `music.apple.com` rather than reimplementing a UI; DRM via CastLabs Electron |
+| Linux specifics | Widevine, Wayland + X11, bi-directional MPRIS over D-Bus |
+
+The MPRIS support is the part that matters for this config: it means
+`playerctl` — already bound to the transport keys in both compositors — will
+control it.
+
+**Correction to an earlier claim in this file's discussion:** I said no FOSS
+Apple Music client was practical because of DRM. Sidra solves it by building
+on CastLabs' Electron fork, which ships Widevine. The claim was wrong.
+
+✅ **Installed 2026-08-10.** Flake input `sidra` in `flake.nix`, package added
+in `home/gui.nix` as
+`inputs.sidra.packages.${pkgs.stdenv.hostPlatform.system}.default`. Locked at
+0.4.0 / rev 0597e543. No packaging work was needed — the upstream flake does
+it all.
+
+---
 
 ## 6. Suggested order
 

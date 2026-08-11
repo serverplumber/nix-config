@@ -689,6 +689,43 @@ hardware file is generated against the actual disks, because the placeholder
 `throw`s by design. Everything short of that is checkable here, which is far
 more than "nothing has been evaluated" implied.
 
+### Seeding the install from the shared store
+
+The `nix-store` podman volume (shared with `~/code/krump`) lives at
+`~/.local/share/containers/storage/volumes/nix-store/_data`, i.e. on
+`/dev/nvme1n1p3[/home]` — **the subvolume that carries over**. Anything built
+into it from Bluefin is still there after the migration.
+
+That makes the ordering matter:
+
+```bash
+just vm     # or just iso — realises the expensive outputs into the volume
+```
+
+Run *before* migrating, this populates the shared store with Hyprland, CUDA
+torch, Plasma and the rest. Then `nixos-install` on the ISO can copy from it
+instead of the network.
+
+From the ISO, with the home subvolume mounted at `/mnt/home`:
+
+```bash
+mkdir -p /tmp/seed
+mount --bind /mnt/home/stablefly/.local/share/containers/storage/volumes/nix-store/_data /tmp/seed
+nixos-install --flake /etc/nixos#laptop \
+  --option extra-substituters "local?root=/tmp/seed"
+```
+
+⚠️ **Untested.** The store URI form and the bind layout are the parts to
+verify — `local?root=X` expects `X/nix/store`, and the volume's `_data` *is*
+the `/nix` directory, so the bind may need an extra level. Check with
+`nix path-info --store "local?root=/tmp/seed" <some-path>` before relying on
+it.
+
+This does **not** replace the substituters in `modules/caches.nix`: the store
+answers "do I already have this", the substituters answer "where do I get it
+if not". Right now the volume holds 22,349 paths of which 20,464 are `.drv` —
+recipes, not outputs — because evaluation instantiates without realising.
+
 ### Formatting
 
 `nixfmt` is the formatter (RFC 166 style). Re-run it after any edit:

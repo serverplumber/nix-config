@@ -30,32 +30,52 @@ let
       network ? true,
       rw ? (_: [ ]),
       ro ? (_: [ ]),
+      binPath ? null,
+      # "env" gives a full package (bin + share/applications, so it shows up in
+      # the launcher). "script" gives the wrapped binary alone.
+      #
+      # env is right for almost everything. It fails on packages that ship
+      # many binaries symlinked into their own lib/ — nixpak's override layer
+      # then produces dangling symlinks and buildEnv refuses the collision.
+      # LibreOffice is the one such package here; see its entry below.
+      mode ? "env",
     }:
-    (mkNixPak {
-      config =
-        { sloth, ... }:
-        {
-          app.package = package;
-          flatpak.appId = appId;
+    let
+      pak = (
+        mkNixPak {
+          config =
+            { sloth, ... }:
+            {
+              # binPath is a plain string option with no null allowed, so only
+              # define it when we actually have one.
+              app = {
+                inherit package;
+              }
+              // pkgs.lib.optionalAttrs (binPath != null) { inherit binPath; };
 
-          dbus.policies = {
-            "org.freedesktop.portal.*" = "talk";
-            "org.freedesktop.Notifications" = "talk";
-          };
+              flatpak.appId = appId;
 
-          gpu.enable = true;
+              dbus.policies = {
+                "org.freedesktop.portal.*" = "talk";
+                "org.freedesktop.Notifications" = "talk";
+              };
 
-          bubblewrap = {
-            inherit network;
-            sockets = {
-              wayland = true;
-              pipewire = true;
+              gpu.enable = true;
+
+              bubblewrap = {
+                inherit network;
+                sockets = {
+                  wayland = true;
+                  pipewire = true;
+                };
+                bind.rw = rw sloth;
+                bind.ro = ro sloth;
+              };
             };
-            bind.rw = rw sloth;
-            bind.ro = ro sloth;
-          };
-        };
-    }).config.env;
+        }
+      );
+    in
+    if mode == "script" then pak.config.script else pak.config.env;
 
   ### Obsidian — one vault directory, nothing else. Electron, and it indexes
   ### everything it can reach, so the narrower this is the better.
@@ -138,7 +158,16 @@ let
   ### `stremio` proper was removed from nixpkgs in Feb 2026 (vulnerable qt5
   ### webengine); stremio-linux-shell is the replacement.
   stremio = sandbox {
-    package = pkgs.stremio-linux-shell;
+    # doInstallCheck disabled: upstream's versionCheckPhase runs
+    # `stremio --version`, which tries to create its data directory and dies
+    # with PermissionDenied inside nix's build sandbox (no writable HOME).
+    # The package simply cannot build as packaged on this nixpkgs pin —
+    # measured 2026-08-10, it is the only thing in the whole closure that
+    # failed. Skipping the check is safe; it tests nothing about the binary
+    # beyond it being able to print a version string.
+    package = pkgs.stremio-linux-shell.overrideAttrs (_: {
+      doInstallCheck = false;
+    });
     appId = "com.stremio.Stremio";
     rw = sloth: [
       (sloth.concat' sloth.homeDir "/.stremio-server")
@@ -149,9 +178,24 @@ let
 
   ### LibreOffice — NO NETWORK. It opens untrusted documents and ships a macro
   ### engine; there is no reason for it to reach the internet.
+  ### LibreOffice must use script mode. With mode = "env" the build dies:
+  ###
+  ###   pkgs.buildEnv error: two given paths contain a conflicting subpath:
+  ###     dangling symlink .../nixpak-overrides-libreoffice/bin/soffice
+  ###
+  ### LibreOffice ships soffice/swriter/scalc/smath as symlinks into its own
+  ### lib/libreoffice/program/. nixpak's override layer re-links each one, the
+  ### links dangle, and buildEnv refuses the collision. Setting binPath does
+  ### not help — measured; it fails identically on whichever binary comes
+  ### first alphabetically.
+  ###
+  ### script mode yields bin/soffice alone and no share/applications, hence
+  ### the hand-written desktop entry below.
   libreoffice = sandbox {
     package = pkgs.libreoffice-fresh;
     appId = "org.libreoffice.LibreOffice";
+    mode = "script";
+    binPath = "bin/soffice";
     network = false;
     rw = sloth: [
       (sloth.concat' sloth.homeDir "/Documents")
@@ -199,7 +243,76 @@ in
     ### Plays files from anywhere by definition — same argument as Dolphin.
     ### A sandbox would mean binding every directory you ever keep media in.
     vlc
-  ]);
+
+    # ***
+
+    ### Occasional-use tools. Unsandboxed for the same reason as VLC and
+    ### Dolphin: they exist to open arbitrary files, so a cage would mean
+    ### binding every directory you might ever point them at.
+
+    krita # 6.0.2.1
+
+    # Keyboard-driven video. VLC is a mouse-first GUI; mpv is a window you
+    # shove in a tiling slot and drive from the keyboard. With yt-dlp on PATH
+    # (home/cli.nix) `mpv <url>` plays YouTube/Twitch directly — no browser
+    # tab, and it tiles like any other window. This is the "TV while coding"
+    # combination; VLC stays for the times a GUI is actually wanted.
+    mpv
+
+    # PipeWire mixer. Without this there is NO way to set per-app volume or
+    # switch output device outside the Plasma session — the media keys only
+    # move the master. pwvucontrol is the PipeWire-native one (pavucontrol is
+    # the older PulseAudio-era GUI).
+    pwvucontrol
+
+    # Screenshots. Nothing in a DE-less Wayland session provides this.
+    # grim captures, slurp selects a region, swappy annotates.
+    # niri has screenshots built in and uses its own; Hyprland calls these.
+    grim
+    slurp
+    swappy
+
+    # Fast, Wayland-native, keyboard-driven — suits a tiling session far
+    # better than a thumbnail browser. `imv <file>`, hjkl to navigate.
+    imv
+
+    # Basic / Advanced (scientific) / FINANCIAL / Programming modes. The
+    # financial mode is the reason for this one specifically — most
+    # calculators do not have it. Self-contained GTK4, so unlike the GNOME
+    # Calendar/Contacts family it needs no evolution-data-server or
+    # gnome-keyring to work outside GNOME.
+    gnome-calculator
+
+    # Ships alongside as the power option: units, currency conversion,
+    # symbolic algebra. Better than gnome-calculator at everything except
+    # having a labelled financial mode.
+    qalculate-gtk
+  ])
+  ++ [
+    # Apple Music, from the project's own flake rather than nixpkgs (it is not
+    # in nixpkgs at all). Free, unlike Cider — see package-migration.md §5c.
+    #
+    # Exposes bi-directional MPRIS over D-Bus as
+    # org.mpris.MediaPlayer2.sidra, so the XF86AudioPlay/Next/Prev binds
+    # already wired to playerctl in both compositors control it with no
+    # extra configuration.
+    inputs.sidra.packages.${pkgs.stdenv.hostPlatform.system}.default
+  ];
+
+  # script mode drops share/applications, so LibreOffice would otherwise be
+  # invisible to the launcher. `soffice` handles every document type and takes
+  # --writer/--calc/--impress if you want a specific module.
+  xdg.desktopEntries.libreoffice = {
+    name = "LibreOffice";
+    genericName = "Office Suite";
+    exec = "soffice %U";
+    icon = "libreoffice-startcenter";
+    terminal = false;
+    categories = [
+      "Office"
+      "X-Sandboxed"
+    ];
+  };
 
   # Creates ~/Documents/obsidian_vault so the sandbox bind target exists before
   # the vault itself does. Without it, nixpak binds a non-existent path and

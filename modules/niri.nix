@@ -30,6 +30,20 @@
     package = pkgs.niri;
   };
 
+  # ***
+
+  # X11 bridge. niri is Wayland-only and looks for `xwayland-satellite` on
+  # PATH at startup; without it the journal shows
+  #
+  #   error spawning xwayland-satellite at "xwayland-satellite",
+  #   disabling integration: No such file or directory
+  #
+  # and every X11-only application silently fails to start. Found by reading
+  # the niri journal in the VM, 2026-08-10. niri-flake locks its own
+  # xwayland-satellite inputs but its NixOS module exposes only enable/package,
+  # so the binary has to be put on PATH explicitly.
+  environment.systemPackages = [ pkgs.xwayland-satellite ];
+
   # The module also sets up polkit, an auth agent, and the keyring. Those are
   # shared with the Hyprland session; whichever starts first wins and both
   # work, so there is no need to duplicate them in modules/hyprland.nix.

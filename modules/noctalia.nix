@@ -16,12 +16,6 @@
   # `services.tuned.enable` is the alternative to power-profiles-daemon.
   # They conflict — enable exactly one.
 
-  # Same rule as Hyprland's cache: set this before the input is first
-  # evaluated, or you build the shell locally.
-  nix.settings = {
-    extra-substituters = [ "https://noctalia.cachix.org" ];
-    extra-trusted-public-keys = [
-      "noctalia.cachix.org-1:pCOR47nnMEo5thcxNDtzWpOxNFQsBRglJzxWPp3dkU4="
-    ];
-  };
+  # noctalia.cachix.org lives in modules/caches.nix — see the note there about
+  # why the builder needs it separately from the built system.
 }

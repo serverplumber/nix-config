@@ -1,16 +1,17 @@
 { ... }: {
-  # The CUDA binary cache. Without it, anything built with cudaSupport is
-  # compiled locally — torch alone is a multi-hour build. With it, the same
-  # derivation is a 215 MB download (measured 2026-08-10).
+  # DOCUMENTATION ONLY — this module sets nothing. It exists so the reasoning
+  # behind the CUDA choices has a home next to the other modules, and so
+  # O-12 has something to point at. The cache itself moved to
+  # modules/caches.nix; the package swap lives in home/cli.nix.
   #
-  # NB the cache MOVED: cuda-maintainers.cachix.org is stale and returns 404
-  # for current paths. cache.nixos-cuda.org is the live one.
-  nix.settings = {
-    extra-substituters = [ "https://cache.nixos-cuda.org" ];
-    extra-trusted-public-keys = [
-      "cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M="
-    ];
-  };
+  # ***
+  #
+  # The CUDA binary cache is in modules/caches.nix. Without it, anything built
+  # with cudaSupport compiles locally — torch alone is a multi-hour build;
+  # with it, the same derivation is a 215 MB download (measured 2026-08-10).
+  #
+  # NB the cache MOVED: cuda-maintainers.cachix.org is stale and 404s for
+  # current paths. cache.nixos-cuda.org is the live one.
 
   # ***
 

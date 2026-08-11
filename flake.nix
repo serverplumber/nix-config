@@ -21,6 +21,15 @@
     # and you end up compiling Hyprland and its dependencies locally.
     hyprland.url = "github:hyprwm/Hyprland";
 
+    # Apple Music desktop client. Ships its own flake, so this needs no
+    # packaging work — see package-migration.md §5c. Free (BlueOak-1.0.0),
+    # unlike Cider, which went commercial: nixpkgs dropped the original
+    # `cider` in July 2026 and `cider-2` is unfree.
+    sidra = {
+      url = "github:wimpysworld/sidra";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # Declarative bubblewrap sandboxing for nixpkgs packages — flatpak's
     # security model without flatpak's separate store. See package-migration.md
     # §1c for which apps are wrapped and why.
@@ -93,6 +102,17 @@
                 # The VM needs *a* bootloader and *a* root, and must not
                 # inherit the GRUB/ESP/UUID setup from machine.nix.
                 boot.loader.grub.enable = false;
+
+                # NixOS's qemu-vm.nix replaces services.xserver.videoDrivers
+                # with mkVMOverride [...], which strips "nvidia" — and the
+                # container toolkit then trips its own assertion:
+                #
+                #   `nvidia-container-toolkit` requires nvidia drivers
+                #
+                # Only shows up under system.build.vm, not the plain toplevel.
+                # There is no GPU to pass through in a VM anyway, so turn it
+                # off rather than suppressing the assertion.
+                hardware.nvidia-container-toolkit.enable = nixpkgs.lib.mkForce false;
                 fileSystems."/" = {
                   device = "/dev/disk/by-label/nixos";
                   fsType = "ext4";
@@ -101,11 +121,53 @@
                 virtualisation.vmVariant.virtualisation = {
                   memorySize = 8192;
                   cores = 4;
-                  # Needed for any of the compositors to get a display.
+                  # NO GL. Two attempts, both failed:
+                  #
+                  #   qemu: GtkGLArea console lacks DMABUF support
+                  #   epoxy_get_proc_address: Assertion `Couldn't find
+                  #   current GLX or EGL context' failed   -> SIGABRT
+                  #
+                  # Passing --device /dev/dri into the container is NOT
+                  # sufficient: the device nodes appear, but ghcr.io/nixos/nix
+                  # ships no Mesa/EGL userspace, so QEMU's GTK cannot create
+                  # an EGL context to begin with. Bind-mounting Fedora's Mesa
+                  # from the host would mean mixing its glibc with nixpkgs'
+                  # QEMU — not worth it.
+                  #
+                  # CONSEQUENCE: niri cannot be tested in this VM. It refuses
+                  # software EGL ("software EGL renderers are skipped"), so it
+                  # loads its config, opens its Wayland socket, and renders
+                  # nothing. That is a VM limitation, not a config fault — the
+                  # Iris Xe provides EGL natively on bare metal.
+                  #
+                  # Hyprland and Plasma tolerate llvmpipe and DO test here.
                   qemu.options = [
                     "-vga virtio"
-                    "-display gtk,gl=on"
+                    "-display gtk"
                   ];
+                };
+
+                # NB: `services.greetd.settings.initial_session` was here
+                # briefly as a diagnostic — it auto-logs straight into a
+                # session and so SKIPS THE GREETER ENTIRELY, every boot, not
+                # just once. Useful for capturing a compositor's journal,
+                # useless for testing the login screen. Removed; re-add
+                # temporarily if a session needs interrogating again.
+
+                # Debug affordance for the VM only: root autologin on the
+                # serial console, so boot problems can be interrogated by
+                # script instead of by squinting at a QEMU window.
+                services.getty.autologinUser = "root";
+
+                # Mirror the console to the serial port as well as the screen,
+                # so `QEMU_OPTS=-serial stdio just run-vm` gives a readable
+                # boot log. Diagnosing a blank greeter from a screenshot is
+                # hopeless; from a journal it is easy.
+                boot.kernelParams = [
+                  "console=tty0"
+                  "console=ttyS0,115200n8"
+                ];
+                virtualisation.vmVariant.virtualisation = {
                 };
               }
             )
@@ -118,6 +180,12 @@
           specialArgs = { inherit inputs; };
           modules = [
             "${nixpkgs}/nixos/modules/installer/cd-dvd/installation-cd-minimal.nix"
+
+            # Without this the LIVE ISO has only cache.nixos.org, so
+            # `nixos-install --flake .#laptop` compiles Hyprland and CUDA
+            # torch during the migration itself — the worst possible moment.
+            ./modules/caches.nix
+
             (
               { pkgs, ... }:
               {

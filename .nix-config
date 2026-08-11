@@ -1,4 +1,15 @@
-# Nix configuration for container environments
-# Enables experimental features and sets up binary caches
+# nix.conf for the CONTAINER BUILDER — read via NIX_USER_CONF_FILES by the
+# justfile recipes that run nix inside ghcr.io/nixos/nix.
+#
+# This is NOT the same thing as modules/caches.nix. That module configures the
+# machine being built; this file configures the machine doing the building.
+# Without these lines `just vm` and `just iso` compile Hyprland and CUDA torch
+# from source, because the container only knows about cache.nixos.org.
+#
+# Keep in sync with modules/caches.nix by hand — one is a NixOS module, the
+# other is a bare nix.conf, and they cannot share a definition.
 
 experimental-features = nix-command flakes
+
+extra-substituters = https://hyprland.cachix.org https://noctalia.cachix.org https://cache.nixos-cuda.org
+extra-trusted-public-keys = hyprland.cachix.org-1:a7pgxzMz7+chwVL3/pzj6jIBMioiJM7ypFP8PwtkuGc= noctalia.cachix.org-1:pCOR47nnMEo5thcxNDtzWpOxNFQsBRglJzxWPp3dkU4= cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M=

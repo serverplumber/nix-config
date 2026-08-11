@@ -83,7 +83,12 @@
     # Upstream deprecated the systemd approach in favour of this. Do not also
     # add a unit — you get two shells.
     spawn-at-startup = [
-      { command = [ "noctalia-shell" ]; }
+      {
+        command = [
+          "${config.programs.noctalia.package}/bin/noctalia"
+          "--daemon"
+        ];
+      }
     ];
 
     input.touchpad = {
@@ -91,11 +96,27 @@
       natural-scroll = true;
     };
 
+    # Absolute store paths throughout: a compositor does not reliably inherit
+    # the home-manager profile's PATH, and a bare name that fails to resolve
+    # produces no error — the key simply does nothing. Same reason noctalia is
+    # spelled out above.
     binds = with config.lib.niri.actions; {
       # Basics
-      "Mod+Return".action = spawn "foot";
+      "Mod+Return".action = spawn "${pkgs.foot}/bin/foot";
       "Mod+Q".action = close-window;
-      "Mod+Space".action = spawn "noctalia-shell" "ipc" "call" "launcher" "toggle";
+      "Mod+Space".action =
+        spawn "${config.programs.noctalia.package}/bin/noctalia" "msg" "panel-toggle"
+          "launcher";
+
+      # Screenshots. niri does have native screenshot actions in its KDL, but
+      # niri-flake's typed `config.lib.niri.actions` does not expose them —
+      # only `do-screen-transition` matches. Rather than bypass the typed API,
+      # use the same grim/slurp pipeline as the Hyprland session, so both
+      # behave identically.
+      "Print".action =
+        spawn "sh" "-c"
+          "${pkgs.grim}/bin/grim -g \"$(${pkgs.slurp}/bin/slurp)\" - | ${pkgs.swappy}/bin/swappy -f -";
+      "Shift+Print".action = spawn "sh" "-c" "${pkgs.grim}/bin/grim - | ${pkgs.swappy}/bin/swappy -f -";
 
       # Column/scroll navigation — the reason to run niri at all
       "Mod+H".action = focus-column-left;
@@ -111,43 +132,43 @@
       # Volume. allow-when-locked so they work at the lock screen.
       "XF86AudioRaiseVolume" = {
         allow-when-locked = true;
-        action = spawn "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "5%+" "-l" "1.0";
+        action = spawn "${pkgs.wireplumber}/bin/wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "5%+" "-l" "1.0";
       };
       "XF86AudioLowerVolume" = {
         allow-when-locked = true;
-        action = spawn "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "5%-";
+        action = spawn "${pkgs.wireplumber}/bin/wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "5%-";
       };
       "XF86AudioMute" = {
         allow-when-locked = true;
-        action = spawn "wpctl" "set-mute" "@DEFAULT_AUDIO_SINK@" "toggle";
+        action = spawn "${pkgs.wireplumber}/bin/wpctl" "set-mute" "@DEFAULT_AUDIO_SINK@" "toggle";
       };
       "XF86AudioMicMute" = {
         allow-when-locked = true;
-        action = spawn "wpctl" "set-mute" "@DEFAULT_AUDIO_SOURCE@" "toggle";
+        action = spawn "${pkgs.wireplumber}/bin/wpctl" "set-mute" "@DEFAULT_AUDIO_SOURCE@" "toggle";
       };
 
       # Backlight
       "XF86MonBrightnessUp" = {
         allow-when-locked = true;
-        action = spawn "brightnessctl" "set" "5%+";
+        action = spawn "${pkgs.brightnessctl}/bin/brightnessctl" "set" "5%+";
       };
       "XF86MonBrightnessDown" = {
         allow-when-locked = true;
-        action = spawn "brightnessctl" "set" "5%-";
+        action = spawn "${pkgs.brightnessctl}/bin/brightnessctl" "set" "5%-";
       };
 
       # Transport
       "XF86AudioPlay" = {
         allow-when-locked = true;
-        action = spawn "playerctl" "play-pause";
+        action = spawn "${pkgs.playerctl}/bin/playerctl" "play-pause";
       };
       "XF86AudioNext" = {
         allow-when-locked = true;
-        action = spawn "playerctl" "next";
+        action = spawn "${pkgs.playerctl}/bin/playerctl" "next";
       };
       "XF86AudioPrev" = {
         allow-when-locked = true;
-        action = spawn "playerctl" "previous";
+        action = spawn "${pkgs.playerctl}/bin/playerctl" "previous";
       };
     };
 

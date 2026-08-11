@@ -139,6 +139,33 @@ restic_init dest: _need-nix-store
     echo
     run -r "{{dest}}/restic" snapshots
 
+# How big is the backup going to be? Run BEFORE restic_init.
+#
+#   just restic_size
+#
+# A `du` estimate honouring backup-excludes.txt. Treat it as an UPPER bound:
+# restic deduplicates and compresses, so the repo will be meaningfully
+# smaller. For an exact figure use `restic backup --dry-run`, but that needs
+# an initialised repo, which is the thing you are trying to decide about.
+restic_size:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "$HOME"
+    args=()
+    while read -r line; do
+        case "$line" in ''|\#*) continue ;; esac
+        p="${line#\*\*/}"          # **/node_modules -> node_modules
+        p="${p#/}"                  # /nix -> nix
+        args+=(--exclude="$p" --exclude="*/$p")
+    done < "{{project_root}}/backup-excludes.txt"
+    echo "excluding $(( ${#args[@]} / 2 )) patterns from backup-excludes.txt"
+    echo
+    echo "total \$HOME:            $(du -sh --apparent-size "$HOME" 2>/dev/null | cut -f1)"
+    echo "after excludes (approx): $(du -sh --apparent-size "${args[@]}" "$HOME" 2>/dev/null | cut -f1)"
+    echo
+    echo "biggest survivors:"
+    du -h --apparent-size --max-depth=2 "${args[@]}" "$HOME" 2>/dev/null | sort -rh | head -15
+
 # Verify a repo actually restores. An untested backup is a hope, not a backup.
 restic_check dest:
     #!/usr/bin/env bash
@@ -193,7 +220,44 @@ build:
 # Build a bootable VM of the desktop — no real disks, no hardware file
 vm:
     just _nix {{nix_flags}} build .#nixosConfigurations.{{host}}-vm.config.system.build.vm
-    @echo "run it with: ./result/bin/run-{{host}}-vm-vm"
+    @echo "built. run it with: just run-vm"
+
+# Actually boot the VM built by `just vm`.
+#
+# ./result is DANGLING from the host's point of view — the host has no /nix,
+# the store lives in the podman volume. So the runner has to be executed
+# inside a container with that volume mounted, not from the host shell.
+#
+# Needs: /dev/kvm (world-writable here), a Wayland session, and
+# --security-opt=label=disable for the same SELinux reason as the GPU
+# containers in O-12.
+run-vm:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    [ -L result ] || { echo "no ./result — run 'just vm' first"; exit 1; }
+    target=$(readlink result)
+    mkdir -p vm
+    echo "runner: $target/bin/run-{{host}}-vm"
+    echo "disk:   {{project_root}}/vm/{{host}}.qcow2 (persists between runs; delete to reset)"
+    {{podman}} run --rm -it \
+      --security-opt=label=disable \
+      --device /dev/kvm \
+      --device /dev/dri \
+      --group-add keep-groups \
+      -v nix-store:/nix \
+      -v {{project_root}}/vm:/vm \
+      -v "${XDG_RUNTIME_DIR}":"${XDG_RUNTIME_DIR}" \
+      -e XDG_RUNTIME_DIR -e WAYLAND_DISPLAY \
+      -e NIX_DISK_IMAGE=/vm/{{host}}.qcow2 \
+      --userns keep-id:uid=0,gid=0 \
+      -w /vm \
+      {{nix_image}} \
+      "$target/bin/run-{{host}}-vm"
+
+# Throw away the VM's disk image and start clean next boot
+vm-reset:
+    rm -f {{project_root}}/vm/{{host}}.qcow2
+    @echo "disk image removed"
 
 # Build the live installer ISO carrying this flake
 iso:

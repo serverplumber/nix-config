@@ -40,3 +40,14 @@ AppImages
 # /nix is a build artifact and enormous. Listed for the reader's benefit; the
 # backup paths do not include it anyway.
 /nix
+/home/stablefly/Downloads
+/home/stablefly/.tabby/models
+/home/stablefly/.tabby
+/home/stablefly/.var/app
+/home/stablefly/.var
+/home/stablefly/Downloads/iso
+/home/stablefly/Downloads/Prints
+/home/stablefly/.ollama/models
+/home/stablefly/.ollama
+/home/stablefly/.local
+/home/stablefly/.local/share

@@ -56,6 +56,10 @@ in
       dysk
       tealdeer
 
+      # Also what lets `mpv <url>` play a stream directly — mpv shells out to
+      # yt-dlp when handed a URL, so both must be on the same PATH.
+      yt-dlp
+
       ### An extra shell, NOT the login shell — that stays fish
       ### (users.users.stablefly.shell in hosts/laptop/default.nix).
       nushell

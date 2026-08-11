@@ -19,6 +19,7 @@
     ../../modules/nix-ld.nix
     ../../modules/backup.nix
     ../../modules/cuda.nix
+    ../../modules/caches.nix
   ];
 
   networking.hostName = "laptop";
@@ -71,7 +72,7 @@
     ];
 
     # nixos-install prompts for the root password only. Without this, first
-    # boot is a tuigreet prompt with no valid user password.
+    # boot is a greeter prompt with no valid user password.
     # TODO: `passwd stablefly` after first login, then delete this line.
     initialPassword = "changeme";
   };

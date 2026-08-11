@@ -611,7 +611,28 @@
         "niri": "niri",
         "nixpak": "nixpak",
         "nixpkgs": "nixpkgs_2",
-        "noctalia": "noctalia"
+        "noctalia": "noctalia",
+        "sidra": "sidra"
+      }
+    },
+    "sidra": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1785827118,
+        "narHash": "sha256-tS2eSSpa1uLPUyIAJBpf00+A9KSHpC92gKMLavmHuio=",
+        "owner": "wimpysworld",
+        "repo": "sidra",
+        "rev": "0597e5438fe98fef935cb528c2c9aa5db60171c9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "wimpysworld",
+        "repo": "sidra",
+        "type": "github"
       }
     },
     "systems": {

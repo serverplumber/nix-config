@@ -1,3 +1,5 @@
 result
 result-*
 .direnv/
+vm/
+*.qcow2
