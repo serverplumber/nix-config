@@ -1,5 +1,6 @@
 result
 result-*
+iso-out/
 .direnv/
 vm/
 *.qcow2

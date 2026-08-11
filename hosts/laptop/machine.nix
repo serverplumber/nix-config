@@ -13,4 +13,9 @@
     ./filesystems.nix
     ./boot.nix
   ];
+
+  # 13th Gen Core i9 laptop wifi (Intel AX-series) needs its firmware blob
+  # from linux-firmware to load at all — without this the card doesn't
+  # appear as a device, NetworkManager or not.
+  hardware.enableRedistributableFirmware = true;
 }
