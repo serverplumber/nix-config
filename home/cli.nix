@@ -29,6 +29,34 @@ in
   # helix, uv and mdformat moved to ./dev.nix when the buckets in
   # package-migration.md were applied. Nothing was dropped, only relocated.
 
+  # This is NOT redundant with hosts/laptop/default.nix's
+  # `programs.fish.enable` — that's the NixOS module, which only installs the
+  # package and registers /etc/shells. Home-manager's `programs.fish` is a
+  # separate option namespace that owns ~/.config/fish/config.fish, and every
+  # `enableFishIntegration = true` below (and direnv's in dev.nix) is silently
+  # a no-op without it: home-manager's fish module gates its entire config
+  # generation behind `mkIf cfg.enable`, so nothing was ever written.
+  programs.fish.enable = true;
+
+  # Was fisher-managed (jorgebucaran/fisher + danhper/fish-ssh-agent) under
+  # Bluefin — reimplemented declaratively here so it survives a rebuild.
+  # No upstream releases/tags, so pinned to a commit.
+  programs.fish.plugins = [
+    {
+      name = "fish-ssh-agent";
+      src = pkgs.fetchFromGitHub {
+        owner = "danhper";
+        repo = "fish-ssh-agent";
+        rev = "f10d95775352931796fd17f54e6bf2f910163d1b";
+        hash = "sha256-cFroQ7PSBZ5BhXzZEKTKHnEAuEu8W9rFrGZAb8vTgIE=";
+      };
+    }
+  ];
+
+  # Carried over from the hand-written Bluefin config.fish; coursier itself
+  # isn't packaged here; it installs itself to this path directly.
+  home.sessionPath = [ "$HOME/.local/share/coursier/bin" ];
+
   programs.starship = {
     enable = true;
     enableFishIntegration = true;
