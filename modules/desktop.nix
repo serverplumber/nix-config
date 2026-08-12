@@ -26,7 +26,7 @@
   # and needs no --sessions plumbing at all.
   services.greetd.enable = true;
 
-  programs.regreet = {
+  services.displayManager.regreet = {
     enable = true;
 
     # ***
@@ -114,4 +114,13 @@
     enable = true;
     extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
   };
+
+  # ReGreet stores last-user/last-session state here. The nixpkgs module
+  # enables the greeter but does not provision the directory,
+  # so regreet aborts at startup and cage is left composing an empty surface
+  # which presents as a greeter that renders but ignores all input.
+  systemd.tmpfiles.rules = [
+    "d /var/lib/regreet 0755 greeter greeter - -X"
+    "d /var/cache/regreet 0755 greeter greeter - -X"
+  ];
 }

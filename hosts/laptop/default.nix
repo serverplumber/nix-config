@@ -3,6 +3,7 @@
   # which only nixosConfigurations.laptop imports. Everything here is portable
   # enough to boot in a VM — see flake.nix.
   imports = [
+    ../../modules/base.nix
     ../../modules/desktop.nix
     ../../modules/niri.nix
     ../../modules/hyprland.nix

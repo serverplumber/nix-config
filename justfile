@@ -37,12 +37,13 @@ bootstrap:
     fi
 
 # Run nix on the host if present, else in the container
-_nix +args: _need-nix-store
+_nix +args:
     #!/usr/bin/env bash
     set -eo pipefail
     if [ -n "{{_has-nix}}" ]; then
         nix {{args}}
     else
+        just _need-nix-store
         {{podman}} run --rm \
           -v {{project_root}}:{{workspace}}:z \
           -v nix-store:/nix \
@@ -184,10 +185,11 @@ restic_check dest:
 # === Check & format ==========================================================
 
 # Parse every .nix file. Works offline AND without git — the only check that does.
-parse: _need-nix-store
+parse:
     #!/usr/bin/env bash
     set -eo pipefail
     run() { if [ -n "{{_has-nix}}" ]; then sh -c "$1"; else
+        just _need-nix-store
         {{podman}} run --rm -v {{project_root}}:{{workspace}}:z -v nix-store:/nix \
           --userns keep-id:uid=0,gid=0 -w {{workspace}} {{nix_image}} sh -c "$1"; fi; }
     run 'fail=0
