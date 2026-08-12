@@ -216,7 +216,20 @@ in
   ++ (with pkgs; [
     ### plain nixpkgs, NOT sandboxed — deliberate, see the note below
     brave
-    vivaldi
+
+    # Chromium's Wayland backend double-counts scale on Hyprland: it
+    # multiplies the legacy wl_output integer scale by the
+    # wp_fractional_scale_v1 value instead of treating them as the same
+    # measurement, so the whole UI renders ~2x too large (confirmed live —
+    # GTK/Qt apps read the compositor scale correctly, only Chromium-family
+    # browsers are affected). --disable-features=WaylandFractionalScaleV1
+    # makes it fall back to the legacy protocol, which is correct here since
+    # every monitor uses an integer scale (2) anyway. Upstream tracking:
+    # https://github.com/hyprwm/Hyprland/discussions/11627
+    (vivaldi.override {
+      commandLineArgs = "--disable-features=WaylandFractionalScaleV1";
+    })
+
     firefox
 
     ### Tier 3 — sandboxing these would fight what they are for
