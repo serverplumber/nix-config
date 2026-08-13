@@ -36,4 +36,19 @@
     # and the flake's devShell is therefore not reachable.
     nix-tree
   ];
+
+  # Nerd Fonts, system-wide so every terminal/bar/prompt has icon glyphs
+  # available regardless of which user or session is active. JetBrainsMono
+  # is the default monospace face; the rest are here so there's a choice
+  # without reaching for `nix-tree`/nixpkgs to find the attr name.
+  fonts.packages = with pkgs.nerd-fonts; [
+    jetbrains-mono
+    fira-code
+    caskaydia-cove
+    meslo-lg
+    iosevka
+    monaspace
+  ];
+
+  fonts.fontconfig.defaultFonts.monospace = [ "JetBrainsMono Nerd Font" ];
 }
