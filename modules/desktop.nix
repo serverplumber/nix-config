@@ -29,6 +29,19 @@
   services.displayManager.regreet = {
     enable = true;
 
+    # Cage (the compositor the greeter runs in) has no output-mirroring mode
+    # — only "extend" (default) or "last". "extend" treats both monitors as
+    # one wide virtual canvas and centers the login box across the combined
+    # width, so on a two-screen setup the box straddles the seam between
+    # them. "last" confines cage to a single output (the last one it
+    # enumerates), which keeps the box whole on one screen instead.
+    cageArgs = [
+      "-s"
+      "-d"
+      "-m"
+      "last"
+    ];
+
     # ***
     #
     # THEMING NOTES — the two things that trip people up:
