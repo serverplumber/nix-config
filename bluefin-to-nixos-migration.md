@@ -1476,10 +1476,12 @@ not the number.
       config matches design (`useOSProber = false`), actually booting into
       Windows to confirm is a physical test nobody's run
 - [x] External port wiring measured — HDMI-A-1 is on the NVIDIA GPU (O-10)
-- [ ] Both displays come up at 3840x2400 / 3840x2160, scale 2, external above
-      — needs a docked visual check
-- [ ] External display does not stutter with NO render override (O-10a). If
-      it does, uncomment `debug.render-drm-device` in `home/niri.nix`
+- [x] Both displays come up at 3840x2400 / 3840x2160, scale 2, external above
+      — confirmed 2026-08-14, docked, in **both** niri and Hyprland
+- [x] External display does not stutter with NO render override (O-10a) —
+      confirmed 2026-08-14 fine in both sessions. Option 3 (plain offload,
+      no `debug.render-drm-device` pin) holds; no need to fall back to
+      option 1
 - [x] dGPU suspends when undocked — confirmed 2026-08-14:
       `/sys/bus/pci/devices/0000:01:00.0/power/runtime_status` reads
       `suspended` right now (machine currently undocked)
