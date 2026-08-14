@@ -1367,10 +1367,32 @@ Machine has booted for real since; these are no longer blocked:
       The other open question is a safety check: before writing, confirm the
       inserted card is *the* backup card and not some random SD/microSD —
       idea on the table is a signature file written to the card at init time,
-      checked before every backup, refuse if absent. Design not yet decided
-      on: manual-only (`just restic_init`/a new `just restic_run`, run by
-      hand when the card's in) vs. a timer that no-ops when the signed card
-      isn't mounted.
+      checked before every backup, refuse if absent.
+
+      **Trigger design, decided 2026-08-14:** a systemd timer, not manual —
+      fired during idle time (the intent is it fires while away from the
+      machine, e.g. a gym or coffee break) rather than on a fixed calendar
+      slot. On each fire:
+      - Card present + signature valid → run the backup. Expected to be
+        quick (restic is incremental after the first run) — budget "a long
+        coffee break, at most," so the unit should have a timeout well under
+        that and something should notice if a run runs long, not just silently
+        let it ride.
+      - Card absent, or present without a valid signature → **don't fail
+        silently.** Raise a desktop notification reminding the user the
+        backup card isn't in the machine. This is the actual point of the
+        signature check: it's not just refusing to write to the wrong drive,
+        it's the trigger for the "you forgot the card" reminder.
+
+      Needs, technically: an idle-detection condition (systemd-logind idle
+      state, or noctalia's own idle/lock handling if it exposes one — not
+      yet checked which this desktop already has), a notification path from a
+      *system* service to the user's session (a system-level
+      `services.restic` unit doesn't have a desktop session to notify by
+      default — needs `notify-send` routed to the user's D-Bus session, or
+      running the check as a user-level systemd unit instead of system-level
+      so it inherits the session bus for free), and a run-time budget/timeout
+      on the backup step itself.
 
       **Not implementing this in the nix-config repo yet.** Plan as of
       2026-08-14: write the signature-check tool as a small standalone Go
