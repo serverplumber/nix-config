@@ -73,28 +73,60 @@ in
       end)
 
       ---------------------------------------------------------------- basics
-      hl.bind(mod .. " + Return", hl.dsp.exec_cmd("${pkgs.foot}/bin/foot"))
-      hl.bind(mod .. " + Q",      hl.dsp.window.close())
-      hl.bind(mod .. " + Space",  hl.dsp.exec_cmd("${config.programs.noctalia.package}/bin/noctalia msg panel-toggle launcher"))
-      hl.bind(mod .. " + V",      hl.dsp.window.float({ action = "toggle" }))
+      --
+      -- This mirrors Hyprland's own shipped example hyprland.lua bind-for-
+      -- bind (see ${hyprPkgs.hyprland}/share/hypr/hyprland.lua) — with only
+      -- the program names swapped for what's actually installed here: foot
+      -- for the terminal, noctalia for the launcher (there is no separate
+      -- app-launcher package on this machine; dolphin is already installed
+      -- as the file manager, so SUPER+E is unchanged). Deliberate: until
+      -- it's decided whether niri/Hyprland stick around at all, the
+      -- bindings should match what the Hyprland wiki teaches, not a
+      -- personal remap.
+      --
+      -- Note there is no default screenshot bind and no default lock bind —
+      -- Hyprland's example config doesn't set either (niri's does, via
+      -- Super+Alt+L / Print in home/niri.nix). Ask if you want them added.
+      local terminal = "${pkgs.foot}/bin/foot"
+      local fileManager = "${pkgs.kdePackages.dolphin}/bin/dolphin"
+      local menu = "${config.programs.noctalia.package}/bin/noctalia msg panel-toggle launcher"
 
-      ------------------------------------------------------------ screenshot
-      -- Hyprland has no built-in capture, unlike niri. grim takes the shot,
-      -- slurp picks the region, swappy opens it for annotation.
-      hl.bind("Print",
-        hl.dsp.exec_cmd("sh -c '${pkgs.grim}/bin/grim -g \"$(${pkgs.slurp}/bin/slurp)\" - | ${pkgs.swappy}/bin/swappy -f -'"))
-      hl.bind("SHIFT + Print",
-        hl.dsp.exec_cmd("sh -c '${pkgs.grim}/bin/grim - | ${pkgs.swappy}/bin/swappy -f -'"))
+      hl.bind(mod .. " + Q", hl.dsp.exec_cmd(terminal))
+      hl.bind(mod .. " + C", hl.dsp.window.close())
+      -- Shipped default text was "hyprctl dispatch 'hl.dsp.exit()'", which
+      -- is not a valid dispatcher — normalized to the real exit dispatcher.
+      hl.bind(mod .. " + M", hl.dsp.exec_cmd("command -v hyprshutdown >/dev/null 2>&1 && hyprshutdown || hyprctl dispatch exit"))
+      hl.bind(mod .. " + E", hl.dsp.exec_cmd(fileManager))
+      hl.bind(mod .. " + V", hl.dsp.window.float({ action = "toggle" }))
+      hl.bind(mod .. " + R", hl.dsp.exec_cmd(menu))
+      hl.bind(mod .. " + P", hl.dsp.window.pseudo())
+      hl.bind(mod .. " + J", hl.dsp.layout("togglesplit"))    -- dwindle only
 
-      ---------------------------------------------------------------- focus
-      -- Same hjkl as the niri session so muscle memory carries between them.
-      hl.bind(mod .. " + H", hl.dsp.focus({ direction = "left"  }))
-      hl.bind(mod .. " + L", hl.dsp.focus({ direction = "right" }))
-      hl.bind(mod .. " + J", hl.dsp.focus({ direction = "down"  }))
-      hl.bind(mod .. " + K", hl.dsp.focus({ direction = "up"    }))
+      -- Move focus with mod + arrow keys
+      hl.bind(mod .. " + left",  hl.dsp.focus({ direction = "left" }))
+      hl.bind(mod .. " + right", hl.dsp.focus({ direction = "right" }))
+      hl.bind(mod .. " + up",    hl.dsp.focus({ direction = "up" }))
+      hl.bind(mod .. " + down",  hl.dsp.focus({ direction = "down" }))
 
-      hl.bind(mod .. " + SHIFT + H", hl.dsp.window.move({ direction = "left"  }))
-      hl.bind(mod .. " + SHIFT + L", hl.dsp.window.move({ direction = "right" }))
+      -- Switch workspaces with mod + [0-9]
+      -- Move active window to a workspace with mod + SHIFT + [0-9]
+      for i = 1, 10 do
+        local key = i % 10 -- 10 maps to key 0
+        hl.bind(mod .. " + " .. key,         hl.dsp.focus({ workspace = i}))
+        hl.bind(mod .. " + SHIFT + " .. key, hl.dsp.window.move({ workspace = i }))
+      end
+
+      -- Special workspace (scratchpad)
+      hl.bind(mod .. " + S",         hl.dsp.workspace.toggle_special("magic"))
+      hl.bind(mod .. " + SHIFT + S", hl.dsp.window.move({ workspace = "special:magic" }))
+
+      -- Scroll through existing workspaces with mod + scroll
+      hl.bind(mod .. " + mouse_down", hl.dsp.focus({ workspace = "e+1" }))
+      hl.bind(mod .. " + mouse_up",   hl.dsp.focus({ workspace = "e-1" }))
+
+      -- Move/resize windows with mod + LMB/RMB and dragging
+      hl.bind(mod .. " + mouse:272", hl.dsp.window.drag(),   { mouse = true })
+      hl.bind(mod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
 
       ---------------------------------------------------------------- media
       -- locked = works at the lock screen; repeating = holds down.
@@ -106,10 +138,10 @@ in
         { locked = true, repeating = true })
       hl.bind("XF86AudioMute",
         hl.dsp.exec_cmd("${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"),
-        { locked = true })
+        { locked = true, repeating = true })
       hl.bind("XF86AudioMicMute",
         hl.dsp.exec_cmd("${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"),
-        { locked = true })
+        { locked = true, repeating = true })
 
       hl.bind("XF86MonBrightnessUp",
         hl.dsp.exec_cmd("${pkgs.brightnessctl}/bin/brightnessctl -e4 -n2 set 5%+"),
@@ -118,9 +150,10 @@ in
         hl.dsp.exec_cmd("${pkgs.brightnessctl}/bin/brightnessctl -e4 -n2 set 5%-"),
         { locked = true, repeating = true })
 
-      hl.bind("XF86AudioPlay", hl.dsp.exec_cmd("${pkgs.playerctl}/bin/playerctl play-pause"), { locked = true })
-      hl.bind("XF86AudioNext", hl.dsp.exec_cmd("${pkgs.playerctl}/bin/playerctl next"),       { locked = true })
-      hl.bind("XF86AudioPrev", hl.dsp.exec_cmd("${pkgs.playerctl}/bin/playerctl previous"),   { locked = true })
+      hl.bind("XF86AudioNext",  hl.dsp.exec_cmd("${pkgs.playerctl}/bin/playerctl next"),       { locked = true })
+      hl.bind("XF86AudioPause", hl.dsp.exec_cmd("${pkgs.playerctl}/bin/playerctl play-pause"), { locked = true })
+      hl.bind("XF86AudioPlay",  hl.dsp.exec_cmd("${pkgs.playerctl}/bin/playerctl play-pause"), { locked = true })
+      hl.bind("XF86AudioPrev",  hl.dsp.exec_cmd("${pkgs.playerctl}/bin/playerctl previous"),   { locked = true })
     '';
   };
 }
