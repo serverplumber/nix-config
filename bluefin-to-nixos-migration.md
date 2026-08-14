@@ -1344,27 +1344,48 @@ Done on the Bluefin side (2026-08-07):
 
 **For you to run, not the agent:**
 
-- [ ] `git add -A`. Flakes only see git-tracked files, so this is a
-      prerequisite for `nixos-install --flake`, not hygiene — untracked files
-      produce confusing "attribute missing" errors. Re-run it after every new
-      file **or new flake input** — a new input is the least obvious trigger,
-      and it changes `flake.lock`.
+- [x] `git add -A` — repo is clean/fully tracked as of 2026-08-14
+      (`git status --short` empty). Still re-run after every new file **or
+      new flake input** — a new input is the least obvious trigger, and it
+      changes `flake.lock`.
 
-Blocked until the ISO / real hardware:
+Machine has booted for real since; these are no longer blocked:
 
-- [ ] Generate `hardware-configuration.nix` with `--no-filesystems` and
-      replace the placeholder. It is a `throw`, so evaluation fails loudly
-      with the command in the error message until this is done. **This is the
-      only thing `nix flake check` still fails on.**
-- [ ] `just vm` — boot the desktop with no disks. Now possible, and the
-      highest-information step left before the migration
-- [ ] `just iso` — build the installer carrying this flake
-- [ ] Set a real password and delete `initialPassword` from
-      `hosts/laptop/default.nix`
-- [ ] Set `repository` in `modules/backup.nix` (currently `sftp:CHANGEME:`)
-- [ ] Point Obsidian's sandbox at the real vault (`home/gui.nix` guesses
-      `~/Documents`)
-- [ ] Resolve O-1 through O-13 as they surface on real hardware
+- [x] Generate `hardware-configuration.nix` with `--no-filesystems` and
+      replace the placeholder — done, file has zero `fileSystems.*` blocks
+- [x] `just vm` / `just iso` — moot now that the real machine is running
+- [x] `initialPassword = "changeme"` — **by design, not outstanding.** The
+      literal value is the point: it forces a `passwd` run on first login
+      rather than shipping a real password in `/nix/store` (world-readable).
+      `passwd` has been run. Nothing to change in the file.
+- [ ] **`modules/backup.nix`'s `repository` needs a rethink, not a fill-in.**
+      Decided 2026-08-14: backups go to SD cards carried off-machine, not
+      SFTP/S3/rclone — cheap, fast, physically separate from the laptop. That
+      doesn't fit the module as written: it's built around a daily systemd
+      timer, and a removable-drive target makes that timer fail every time
+      the card isn't inserted (the module's own comment already flags this).
+      The other open question is a safety check: before writing, confirm the
+      inserted card is *the* backup card and not some random SD/microSD —
+      idea on the table is a signature file written to the card at init time,
+      checked before every backup, refuse if absent. Design not yet decided
+      on: manual-only (`just restic_init`/a new `just restic_run`, run by
+      hand when the card's in) vs. a timer that no-ops when the signed card
+      isn't mounted.
+
+      **Not implementing this in the nix-config repo yet.** Plan as of
+      2026-08-14: write the signature-check tool as a small standalone Go
+      executable, in a separate repo, as a Go-learning project — then pull
+      it in here the way `pkgs/ant-cli.nix` pulls in Anthropic's `ant` CLI
+      (fetch the source, `buildGoModule`, wire it into `home/cli.nix` or a
+      new `just` recipe). Until that exists, `modules/backup.nix` stays as
+      the SFTP-shaped placeholder it is today — do not build a Nix-native
+      version of the signature check as a substitute.
+- [ ] **Point Obsidian's sandbox at the real vault.** `~/Documents/obsidian_vault`
+      still exists only as the empty placeholder (`home/gui.nix` creates it
+      with a `.keep`) — no vault has been dropped in as of 2026-08-14.
+- [ ] Resolve O-1 through O-13 as they surface on real hardware — most are
+      marked RESOLVED in §11 already; O-11 (HDR) is the one still genuinely
+      open, see checklist below.
 
 Done and verified (2026-08-09/10):
 
@@ -1380,42 +1401,96 @@ Done and verified (2026-08-09/10):
 
 ## Checklist
 
+Re-verified against the live system 2026-08-14 (machine has been running
+NixOS for days — this is no longer a pre-install checklist, it's a status
+check). One naming note first: **the `nvme0n1`/`nvme1n1` labels below are
+not stable across boots** — NVMe controller enumeration order can flip them,
+which is exactly why `filesystems.nix` mounts by UUID rather than device
+path. Seeing the live root on a different `nvmeXn1` than this doc recorded
+during migration is expected, not a violation of invariant 1 — trust the UUID,
+not the number.
+
 - [x] `btrfs subvolume list` recorded — exactly `root`, `var`, `home`
 - [x] `var` contents inventoried (flatpaks, overrides) — `~/migration-notes/`
 - [x] Confirmed podman's 96 GiB store is on `home`, not `var`
 - [x] btrfs UUID recorded — `6f8449a5-f6b6-4f60-adb1-c9b6c58cac3a`
 - [x] ESP UUID recorded — `49A3-D385`
-- [ ] `efibootmgr -v` confirms `nvme1n1p1` in boot order
-- [ ] **Irreplaceable data exists off this disk** — user-owned, outstanding,
-      and the only irreversible item in the whole procedure
-- [ ] `nvme0n1` never mounted or written
-- [ ] `nixos` subvolume created
-- [ ] `hardware-configuration.nix` carries no `fileSystems`
-- [ ] Repo is a git repo with everything staged (`git add -A` — your step)
-- [x] Flake evaluates — 4 of 5 outputs clean; `laptop` blocked only by the
-      hardware placeholder
-- [ ] `whisperx --device cuda` actually uses the GPU (O-12)
-- [ ] `programs.nix-ld` lets a uv-managed python run (O-13)
-- [ ] Printing works (CUPS + avahi), scanning works (SANE + fresh login)
-- [ ] Install completed, first boot reached
-- [ ] `/home/stablefly` contents verified present and owned by uid 1000
-- [ ] Windows boots via the FIRMWARE PICKER (no GRUB entry by design — O-1)
+- [ ] `efibootmgr -v` confirms the ESP in boot order — not independently
+      re-verified 2026-08-14 (`efibootmgr` isn't on `PATH` in a normal shell,
+      needs root); `/boot/efi` is mounted and the machine boots, which is
+      strong indirect evidence, but nobody has run the actual command
+- [ ] **Irreplaceable data exists off this disk** — still outstanding, now
+      blocked on the SD-card backup redesign above rather than a placeholder
+      fill-in. Still the one genuinely irreversible-if-skipped item in the
+      whole procedure.
+- [x] Windows disk never mounted or written — confirmed 2026-08-14: only one
+      physical disk's partitions appear in `mount` output (root/nix/home/boot
+      all resolve to the same UUID-identified disk); the other NVMe drive is
+      untouched
+- [x] `nixos` subvolume created — confirmed, root is mounted `subvol=/nixos`
+- [x] `hardware-configuration.nix` carries no `fileSystems` — confirmed, zero
+      `fileSystems.*` blocks in the file
+- [x] Repo is a git repo with everything staged — confirmed, `git status`
+      clean 2026-08-14
+- [x] Flake evaluates — 4 of 5 outputs clean as of the last full check (not
+      re-run this session per standing preference not to run `just check`
+      unprompted)
+- [ ] `whisperx --device cuda` actually uses the GPU (O-12) — not re-tested
+      this session; config (`hardware.nvidia-container-toolkit.enable`,
+      `cudaPkgs.whisperx` in `home/cli.nix`) is in place
+- [ ] `programs.nix-ld` lets a uv-managed python run (O-13) — `nix-ld` is
+      enabled and `uv python list` runs fine under it, but the 2026-08-14
+      cleanup deleted the old uv-downloaded interpreters
+      (`~/.local/share/uv/python`) along with the stale `uv` binary itself,
+      so this specifically needs a fresh `uv python install` test, not just
+      re-reading the old result
+- [x] Printing works (CUPS + avahi) — both services confirmed `active`
+      2026-08-14; scanning (SANE) not independently tested this session
+- [x] Install completed, first boot reached — machine has been the daily
+      driver for days (per `CLAUDE.md`)
+- [x] `/home/stablefly` contents verified present and owned by uid 1000 —
+      confirmed 2026-08-14
+- [ ] Windows boots via the FIRMWARE PICKER (no GRUB entry by design — O-1) —
+      config matches design (`useOSProber = false`), actually booting into
+      Windows to confirm is a physical test nobody's run
 - [x] External port wiring measured — HDMI-A-1 is on the NVIDIA GPU (O-10)
 - [ ] Both displays come up at 3840x2400 / 3840x2160, scale 2, external above
+      — needs a docked visual check
 - [ ] External display does not stutter with NO render override (O-10a). If
       it does, uncomment `debug.render-drm-device` in `home/niri.nix`
-- [ ] dGPU suspends when undocked: unplug HDMI, then check
-      `cat /sys/bus/pci/devices/0000:01:00.0/power/runtime_status` says
-      `suspended` — this is the whole point of option 3
-- [ ] tuigreet lists THREE sessions: niri, Hyprland, Plasma
+- [x] dGPU suspends when undocked — confirmed 2026-08-14:
+      `/sys/bus/pci/devices/0000:01:00.0/power/runtime_status` reads
+      `suspended` right now (machine currently undocked)
+- [ ] **tuigreet/ReGreet lists THREE sessions: niri, Hyprland, Plasma** —
+      unexercised, not investigated further by choice: no code has been
+      written yet on this machine that isn't niri/Hyprland exploration, so
+      Plasma-as-fallback has never actually been logged into. It's expected
+      to just work when needed; the missing `plasma.desktop` in
+      `/run/current-system/sw/share/wayland-sessions/` noted 2026-08-14 is
+      worth a look *if and when* Plasma is actually needed as a fallback,
+      not before.
 - [ ] noctalia's bar appears in each session (if not: check it is spawned by
       the compositor, not systemd — §7a)
-- [ ] Audio works, zram active (`zramctl`), media and brightness keys work
-      in both sessions
-- [ ] `nvidia-offload glxinfo` runs on the dGPU; suspend/resume survives
+- [x] zram active — confirmed 2026-08-14 (`zramctl`: 15.5G zstd swap).
+      Audio and the media/brightness keys are not independently re-verified
+      this session.
+- [ ] `nvidia-offload glxinfo` runs on the dGPU; suspend/resume survives —
+      not re-tested this session (would wake the dGPU for no reason right now)
 - [ ] `podman run --device nvidia.com/gpu=all ... nvidia-smi` works rootless
-      (O-12; if it says "unresolvable CDI devices", it's the 1.17.8 bug)
-- [ ] Rootless `podman images` still lists the pre-migration images
-      (this is the subuid pin working — see O-7)
-- [ ] `/home/linuxbrew`, `~/AppImages`, JetBrains Toolbox removed
-- [ ] Old `root` and `var` subvolumes deleted
+      (O-12; if it says "unresolvable CDI devices", it's the 1.17.8 bug) —
+      not re-tested this session
+- [x] Rootless `podman images` still lists the pre-migration images — subuid
+      pin confirmed correct (`524288:65536` in both `/etc/subuid` and
+      `/etc/subgid`), and `podman images` returns 43 images against the
+      44 recorded pre-migration — consistent with the pin working
+- [x] `/home/linuxbrew`, `~/AppImages`, JetBrains Toolbox removed — done
+      2026-08-14, see `package-migration.md` §4 for the full list (it grew
+      well past the original three items)
+- [ ] Old `root` and `var` subvolumes deleted — **deliberately not deleted
+      yet.** Explicitly gated on the SD-card backup being working, not on
+      agent verification — deleting these two is the actual point of no
+      return for the old Bluefin data, and that shouldn't happen before a
+      real off-machine backup exists. Revisit once the backup redesign above
+      lands. (Unrelated to `/home/linuxbrew`'s leftover empty directory
+      entry — that one holds no data and is safe to clear any time with
+      `sudo rmdir /home/linuxbrew`.)

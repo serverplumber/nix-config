@@ -425,6 +425,18 @@ the migration, but nothing on NixOS will run them:
 ~/.local/share/JetBrains/Toolbox
 ```
 
+✅ **Done 2026-08-14.** All three removed, plus items this list undersold:
+`~/.local/share/uv` (7.3G of uv-tool ruff/whisperx installs), the stale
+`~/.local/bin/{uv,uvx,ruff,whisperx,hx,ant}` that were **shadowing** their
+nix equivalents (uv's installer had prepended `~/.local/bin` ahead of the
+nix profile in fish's `$PATH` — that installer script is gone too), all
+three `AppImages` including qFlipper (the Flipper itself was loaned out and
+isn't coming back), `~/.local/share/JetBrains/RubyMine2025.3` (RubyMine was
+dropped by decision, not just Toolbox), and six stale `.desktop` files
+pointing at the above. ~24.5GB reclaimed. `/home/linuxbrew`'s empty
+directory entry needs one `sudo rmdir /home/linuxbrew` — owned by root's
+`/home`, not reachable as the user.
+
 ---
 
 ---
