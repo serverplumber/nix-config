@@ -31,6 +31,18 @@ let
       rw ? (_: [ ]),
       ro ? (_: [ ]),
       binPath ? null,
+      # Bus names this app needs to own (GApplication-style single-instance
+      # registration), beyond the "talk" policies every app gets below.
+      ownBus ? [ ],
+      # PulseAudio-protocol socket ($XDG_RUNTIME_DIR/pulse, served by
+      # pipewire-pulse here) — off by default like nixpak's own toggle;
+      # apps that only play/notify get audio through the pipewire socket
+      # already bound below. Needed by anything using a PulseAudio client
+      # lib directly (e.g. cubeb, as used by Signal's calling engine) —
+      # without it such libraries fail to connect, fall into their
+      # autospawn-a-local-daemon path, and that path crashes instead of
+      # failing gracefully. See signal's entry below — measured 2026-08-14.
+      pulseAudio ? false,
       # "env" gives a full package (bin + share/applications, so it shows up in
       # the launcher). "script" gives the wrapped binary alone.
       #
@@ -58,7 +70,8 @@ let
               dbus.policies = {
                 "org.freedesktop.portal.*" = "talk";
                 "org.freedesktop.Notifications" = "talk";
-              };
+              }
+              // pkgs.lib.genAttrs ownBus (_: "own");
 
               gpu.enable = true;
 
@@ -67,6 +80,7 @@ let
                 sockets = {
                   wayland = true;
                   pipewire = true;
+                  pulse = pulseAudio;
                 };
                 bind.rw = rw sloth;
                 bind.ro = ro sloth;
@@ -93,10 +107,13 @@ let
     ];
   };
 
-  ### Signal — own data dir plus somewhere to save attachments.
+  ### Signal — own data dir plus somewhere to save attachments. pulseAudio:
+  ### calling (libringrtc's cubeb backend) needs the PulseAudio-protocol
+  ### socket, not just pipewire's native one — see sandbox's pulseAudio doc.
   signal = sandbox {
     package = pkgs.signal-desktop;
     appId = "org.signal.Signal";
+    pulseAudio = true;
     rw = sloth: [
       (sloth.concat' sloth.homeDir "/.config/Signal")
       (sloth.concat' sloth.homeDir "/Downloads")
@@ -169,10 +186,30 @@ let
       doInstallCheck = false;
     });
     appId = "com.stremio.Stremio";
+    # GApplication single-instance registration: the app ships
+    # share/dbus-1/services/com.stremio.Stremio.service and calls
+    # g_application_register(), which needs to own this bus name. Without
+    # "own" (only "talk" on the portal/notifications names below), the
+    # xdg-dbus-proxy filter drops the RequestName call, registration fails
+    # with "Failed to register: GDBus.Error:...ServiceUnknown", and the app
+    # exits immediately before drawing a window — measured 2026-08-14.
+    ownBus = [ "com.stremio.Stremio" ];
     rw = sloth: [
       (sloth.concat' sloth.homeDir "/.stremio-server")
       (sloth.concat' sloth.homeDir "/.config/stremio")
       (sloth.concat' sloth.homeDir "/Downloads")
+    ];
+    ro = _: [
+      # Unlike the Electron apps above (which bundle Chromium's own CA
+      # store), this uses glib-networking for TLS, which reads the system
+      # trust store directly. Without this bind every HTTPS request fails
+      # ("Failed to load TLS database: System trust contains zero trusted
+      # certificates"), surfacing in the UI as "Env: Failed to fetch: Load
+      # failed" — measured 2026-08-14. The symlink chain
+      # (/etc/ssl/certs -> /etc/static/ssl/certs -> /nix/store/...) resolves
+      # entirely inside /nix/store, which is already ro-bound wholesale, so
+      # this one path is enough.
+      "/etc/ssl/certs"
     ];
   };
 
