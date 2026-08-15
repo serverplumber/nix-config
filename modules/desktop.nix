@@ -121,11 +121,65 @@
   fonts.enableDefaultPackages = true;
 
   # Both compositors want a portal. niri-flake and programs.hyprland each wire
-  # their own wlr/hyprland portal; the gtk one is what GTK file pickers and
-  # dark-theme preference actually go through, and nothing else provides it.
+  # their own wlr/hyprland portal; kde and gtk cover the rest between them —
+  # see the xdg.portal.config comment below for how those two are split.
   xdg.portal = {
     enable = true;
     extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
+
+    # niri ships its own portal priority file (niri-26.04's
+    # share/xdg-desktop-portal/niri-portals.conf) that prefers
+    # `gnome;gtk` for every interface it doesn't list explicitly —
+    # including FileChooser. There is no gnome-shell running under niri
+    # (or Hyprland), so xdg-desktop-portal-gnome can't actually delegate
+    # those calls; it fails with "Delegated FileChooser call failed: The
+    # name is not activatable" and, because that failure isn't surfaced
+    # as an error back to the caller, the requesting app just hangs
+    # waiting on the portal forever — reproduced with Okular under niri,
+    # 2026-08-14: launched fine, then any Open dialog froze the whole
+    # window. `xdg.portal.config` takes priority over the package's own
+    # niri-portals.conf (see nixos/modules/config/xdg/portal.nix), so
+    # this replaces it outright rather than patching around it. Applied
+    # to both niri and Hyprland for the parity noctalia already gives
+    # them; Hyprland ships no portal config of its own to conflict with.
+    #
+    # Plasma is the other real desktop on this machine (modules/plasma.nix),
+    # so kde leads `default` — Okular and other KDE apps get their native
+    # Breeze dialogs (Access, FileChooser, Print, Settings, ...) instead of
+    # GTK-styled ones. Two interfaces are pinned to gtk instead of trusting
+    # the kde-first default:
+    #   - Notification: xdg-desktop-portal-kde doesn't implement it at all
+    #     (see its .portal file's Interfaces= list) — pinned explicitly
+    #     rather than relying on the fallback silently doing the right thing.
+    #   - Settings: kde *does* implement this (dark/light + accent color),
+    #     but it reads kdeglobals — Plasma's own theme state, which is just
+    #     a fallback session here, not what home-manager's GTK dark-mode
+    #     config actually manages. Defaulting it to kde would make GTK apps
+    #     under niri/Hyprland follow whatever Plasma happens to be set to
+    #     instead of the GTK theme this repo configures.
+    # gnome-keyring stays as the Secret backend regardless — that one
+    # actually runs and is what noctalia's PAM stack already unlocks on
+    # login; neither kde nor gtk implement Secret at all.
+    config = {
+      niri = {
+        default = [
+          "kde"
+          "gtk"
+        ];
+        "org.freedesktop.impl.portal.Notification" = [ "gtk" ];
+        "org.freedesktop.impl.portal.Settings" = [ "gtk" ];
+        "org.freedesktop.impl.portal.Secret" = [ "gnome-keyring" ];
+      };
+      Hyprland = {
+        default = [
+          "kde"
+          "gtk"
+        ];
+        "org.freedesktop.impl.portal.Notification" = [ "gtk" ];
+        "org.freedesktop.impl.portal.Settings" = [ "gtk" ];
+        "org.freedesktop.impl.portal.Secret" = [ "gnome-keyring" ];
+      };
+    };
   };
 
   # ReGreet stores last-user/last-session state here. The nixpkgs module
