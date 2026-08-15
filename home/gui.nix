@@ -202,14 +202,19 @@ let
     ro = _: [
       # Unlike the Electron apps above (which bundle Chromium's own CA
       # store), this uses glib-networking for TLS, which reads the system
-      # trust store directly. Without this bind every HTTPS request fails
+      # trust store directly. Without these binds every HTTPS request fails
       # ("Failed to load TLS database: System trust contains zero trusted
       # certificates"), surfacing in the UI as "Env: Failed to fetch: Load
-      # failed" — measured 2026-08-14. The symlink chain
-      # (/etc/ssl/certs -> /etc/static/ssl/certs -> /nix/store/...) resolves
-      # entirely inside /nix/store, which is already ro-bound wholesale, so
-      # this one path is enough.
+      # failed". The symlink chain is
+      # /etc/ssl/certs/ca-certificates.crt -> /etc/static/ssl/certs/ca-certificates.crt
+      # -> /nix/store/...: two hops through /etc before it lands in
+      # /nix/store, and only the first hop is inside /etc/ssl/certs — the
+      # 2026-08-14 fix bound only that hop, so the second symlink dangled
+      # inside the sandbox and this was still broken. Both /etc paths need
+      # binding; /nix/store is already ro-bound wholesale so the final hop
+      # needs nothing extra — measured 2026-08-14.
       "/etc/ssl/certs"
+      "/etc/static/ssl/certs"
     ];
   };
 
