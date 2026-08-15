@@ -26,7 +26,7 @@
     timeouts = [
       {
         timeout = 300;
-        command = "${config.programs.noctalia.package}/bin/noctalia msg lock";
+        command = "${config.programs.noctalia.package}/bin/noctalia msg session lock";
       }
       {
         timeout = 600;
@@ -34,7 +34,7 @@
       }
     ];
     # Attrset keyed by event name — the list-of-attrsets form is deprecated.
-    events.before-sleep = "${config.programs.noctalia.package}/bin/noctalia msg lock";
+    events.before-sleep = "${config.programs.noctalia.package}/bin/noctalia msg session lock";
   };
 
   home.username = "stablefly";
