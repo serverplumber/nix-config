@@ -307,13 +307,6 @@ in
 
     krita # 6.0.2.1
 
-    # Keyboard-driven video. VLC is a mouse-first GUI; mpv is a window you
-    # shove in a tiling slot and drive from the keyboard. With yt-dlp on PATH
-    # (home/cli.nix) `mpv <url>` plays YouTube/Twitch directly — no browser
-    # tab, and it tiles like any other window. This is the "TV while coding"
-    # combination; VLC stays for the times a GUI is actually wanted.
-    mpv
-
     # PipeWire mixer. Without this there is NO way to set per-app volume or
     # switch output device outside the Plasma session — the media keys only
     # move the master. pwvucontrol is the PipeWire-native one (pavucontrol is
@@ -373,6 +366,51 @@ in
   # the vault itself does. Without it, nixpak binds a non-existent path and
   # Obsidian opens to an empty picker.
   home.file."Documents/obsidian_vault/.keep".text = "";
+
+  # Keyboard-driven video. VLC is a mouse-first GUI; mpv is a window you shove
+  # in a tiling slot and drive from the keyboard. With yt-dlp on PATH
+  # (home/cli.nix) `mpv <url>` plays YouTube/Twitch directly — no browser tab,
+  # and it tiles like any other window. This is the "TV while coding"
+  # combination and now the default handler for local video files too; VLC
+  # stays installed (above) for the times a mouse-first GUI is actually
+  # wanted.
+  #
+  # target-colorspace-hint: mpv asks the compositor (via the Wayland
+  # color-management protocol) what the display actually supports and
+  # tone-maps or passes HDR through accordingly — this is the flag that lets
+  # HDR content reach an HDR-capable output at all, see the Hyprland monitor
+  # rule in home/hyprland.nix. Hyprland implements that protocol; niri (as
+  # currently pinned — flake.lock rev 01be0e6, corresponding to release
+  # 26.04) does not expose any HDR/color-management config yet, so this only
+  # does anything in the Hyprland session — measured 2026-08-14 by reading
+  # niri's own source, no `cm`/HDR fields exist on its Output config struct.
+  # hwdec: HDR content is virtually always 10-bit HEVC/AV1; software
+  # decoding that is a good way to cook the laptop, hardware decode is not
+  # optional here.
+  programs.mpv = {
+    enable = true;
+    config = {
+      hwdec = "auto-safe";
+      target-colorspace-hint = "yes";
+    };
+  };
+
+  xdg.mimeApps.defaultApplications =
+    let
+      videoMimeTypes = [
+        "video/mp4"
+        "video/x-matroska"
+        "video/webm"
+        "video/quicktime"
+        "video/x-msvideo"
+        "video/mpeg"
+        "video/ogg"
+        "video/x-flv"
+        "video/x-ms-wmv"
+        "video/3gpp"
+      ];
+    in
+    pkgs.lib.genAttrs videoMimeTypes (_: "mpv.desktop");
 
   # Browsers are installed the ordinary way on purpose. They keep full access
   # to $HOME, same as on any other distro — sandboxing them is Tier 2 and is

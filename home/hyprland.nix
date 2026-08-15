@@ -46,8 +46,23 @@ in
       ---------------------------------------------------------------- outputs
       -- Transcribed from the working GNOME config. Harmless in a VM: the
       -- connector names simply do not match anything and are ignored.
+      --
+      -- eDP-1 gets HDR back (migration doc O-11): GNOME's monitors.xml had
+      -- `colormode: bt2100` on the internal panel, and neither compositor
+      -- carried that over on migration. cm = "hdredid" is Hyprland's PQ/HDR
+      -- transfer function using the panel's own EDID-reported primaries
+      -- (more accurate than generic BT.2020 primaries via plain "hdr", and
+      -- like both HDR modes it auto-falls-back to sRGB if the panel doesn't
+      -- actually report HDR support — see src/output/Monitor.cpp in the
+      -- Hyprland source). bitdepth = 10 alongside it: HDR at 8-bit bands
+      -- visibly. HDMI-A-1 (external) is left alone — unconfirmed whether
+      -- that display supports HDR at all.
+      --
+      -- This only does anything in this (Hyprland) session — niri as
+      -- currently pinned has no HDR/color-management config exposed at all,
+      -- see home/gui.nix's mpv comment.
       hl.monitor({ output = "HDMI-A-1", mode = "3840x2160@60", position = "0x0",    scale = 2 })
-      hl.monitor({ output = "eDP-1",    mode = "3840x2400@60", position = "0x1080", scale = 2 })
+      hl.monitor({ output = "eDP-1",    mode = "3840x2400@60", position = "0x1080", scale = 2, bitdepth = 10, cm = "hdredid" })
 
       ---------------------------------------------------------------- input
       hl.config({
