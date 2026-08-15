@@ -95,9 +95,9 @@ decision in `home/niri.nix`, `home/hyprland.nix`, and anywhere else binds
 get defined.
 
 On its top (base) layer, the only non-printing keys are: **Esc, Shift,
-Ctrl, Alt, Meta/Super, arrow keys (Left/Right/Up/Down)**, and one
-unidentified key at the bottom-left (mapped to something, unknown what —
-ask before relying on it). Everything else on that layer types a
+Ctrl, Alt, Meta/Super, Backspace, arrow keys (Left/Right/Up/Down)**, and
+one unidentified key at the bottom-left (mapped to something, unknown
+what — ask before relying on it). Everything else on that layer types a
 character. Notably:
 
 - **Home/End, Page Up/Down, Print Screen, and Delete are unconfirmed** —
@@ -108,8 +108,11 @@ character. Notably:
 - Volume keys (XF86Audio{Raise,Lower,Mute}Volume) are present. Status of
   the rest of the XF86 media/backlight set is unconfirmed — check before
   relying on one.
-- `\` (backslash) sits right below Backspace — an actual physical key,
-  unlike the ones above.
+- `\` (backslash) sits right below Backspace, an actual physical key.
+- Shift+Backspace is plain Backspace today, not Delete — there's a
+  standing plan (not yet done) to remap it to Delete on the QMK layer.
+  Binds that reserve Shift+Backspace for that future Delete meaning (e.g.
+  `home/niri.nix`'s lock binds deliberately skip it) should keep doing so.
 
 Net effect: prefer letter/number keys plus the five modifiers above for
 anything meant to be reachable at a glance. `home/niri.nix`'s binds block

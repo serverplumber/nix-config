@@ -119,7 +119,18 @@
       "Mod+D".action =
         spawn "${config.programs.noctalia.package}/bin/noctalia" "msg" "panel-toggle"
           "launcher";
-      "Super+Alt+L".action = spawn "${config.programs.noctalia.package}/bin/noctalia" "msg" "lock";
+      # `noctalia msg lock` is stale — noctalia 5.0 dropped the bare `lock`
+      # command in favour of `session lock` (confirmed: the old form now
+      # errors "unknown command"). Fixed while moving this off Super+Alt+L.
+      # Mod+Shift+Backspace deliberately left alone — reserved in case
+      # Shift+Backspace ever becomes Delete on the QMK layer.
+      "Mod+Backspace".action =
+        spawn "${config.programs.noctalia.package}/bin/noctalia" "msg" "session"
+          "lock";
+      "Mod+Alt+Backspace".action = spawn-sh ''
+        ${config.programs.noctalia.package}/bin/noctalia msg session lock
+        ${config.programs.noctalia.package}/bin/noctalia msg caffeine-enable
+      '';
 
       # niri-flake's typed actions API has no `screenshot`/`screenshot-screen`/
       # `screenshot-window` entries (absent from its memo-binds.nix cache),
@@ -194,6 +205,17 @@
       "Mod+Shift+Ctrl+J".action = move-column-to-monitor-down;
       "Mod+Shift+Ctrl+K".action = move-column-to-monitor-up;
       "Mod+Shift+Ctrl+L".action = move-column-to-monitor-right;
+
+      # Moves the whole focused workspace to another monitor (distinct from
+      # move-column-to-monitor-* above, which only takes the one window).
+      "Mod+Alt+Left".action = move-workspace-to-monitor-left;
+      "Mod+Alt+Down".action = move-workspace-to-monitor-down;
+      "Mod+Alt+Up".action = move-workspace-to-monitor-up;
+      "Mod+Alt+Right".action = move-workspace-to-monitor-right;
+      "Mod+Alt+H".action = move-workspace-to-monitor-left;
+      "Mod+Alt+J".action = move-workspace-to-monitor-down;
+      "Mod+Alt+K".action = move-workspace-to-monitor-up;
+      "Mod+Alt+L".action = move-workspace-to-monitor-right;
 
       "Mod+Page_Down".action = focus-workspace-down;
       "Mod+Page_Up".action = focus-workspace-up;
