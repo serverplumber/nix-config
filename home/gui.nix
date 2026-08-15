@@ -392,6 +392,14 @@ in
   # 26.04) does not expose any HDR/color-management config yet, so this only
   # does anything in the Hyprland session — measured 2026-08-14 by reading
   # niri's own source, no `cm`/HDR fields exist on its Output config struct.
+  # Checked again 2026-08-15: still true upstream through niri v26.04, and
+  # per a maintainer this is blocked on Smithay adding the underlying
+  # protocol support first (Smithay/smithay#1143), with no near-term
+  # timeline. A community fork ("niri-spicy") carries an experimental HDR
+  # branch, but it's pre-release quality and tracked outside niri-flake (our
+  # `niri` input), so not worth adopting here — the practical answer for now
+  # is to use the Hyprland session when HDR actually matters and niri
+  # otherwise.
   # hwdec: HDR content is virtually always 10-bit HEVC/AV1; software
   # decoding that is a good way to cook the laptop, hardware decode is not
   # optional here.
