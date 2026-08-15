@@ -279,6 +279,14 @@ in
     obs-studio # screen capture, camera, virtual device
     proton-vpn # renamed from protonvpn-gui; rewrites routes and DNS — see modules/network.nix
 
+    # Send/receive files to/from anywhere on the LAN — that's the entire
+    # product. A sandboxed rw list would mean either only ever sending from
+    # ~/Downloads or re-editing this file every time a transfer wants a
+    # different source directory, which defeats the point. Same argument as
+    # Dolphin above. appId for reference (not used here, only where nixpak
+    # needs it): org.localsend.localsend_app.
+    localsend
+
     ### Deliberately NOT sandboxed, and not a future candidate either. It is
     ### used as a dev artifact — the front end to the accounting in `dirt` —
     ### so it has to reach dev data and test fixtures freely. Real financial

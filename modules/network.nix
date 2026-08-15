@@ -19,4 +19,15 @@
   #   networking.firewall.checkReversePath = "loose";
   #
   # Not set pre-emptively; it weakens a real protection and may not be needed.
+
+  # LocalSend (home/gui.nix) listens on 53317 for both its UDP multicast
+  # peer-discovery announcements and its HTTPS transfer server. The app
+  # itself was confirmed listening on 0.0.0.0:53317/{tcp,udp} — this was
+  # still failing to see other devices on the LAN because the default
+  # firewall DROPs everything not explicitly allowed, and nothing opened
+  # this port. 53317 is LocalSend's fixed default (changeable in its own
+  # settings, in which case this needs to move with it) — measured
+  # 2026-08-14.
+  networking.firewall.allowedTCPPorts = [ 53317 ];
+  networking.firewall.allowedUDPPorts = [ 53317 ];
 }
