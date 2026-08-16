@@ -79,6 +79,24 @@
     #
     # ***
     #
+    # Known upstream bug, still unresolved: after suspend/resume, HDMI-A-1
+    # (the only output on the 4070/card0 — see above) can come back stuck.
+    # niri spams "Page flip commit failed on device /dev/dri/card0 (Invalid
+    # argument (os error 22))" — observed 2756 times in ~36s on 2026-08-15 —
+    # then gives up and the output just stays dark. This is niri-wm/niri#3384
+    # (same error signature, same NVIDIA-hybrid shape), open, no fix.
+    #
+    # niri does NOT self-recover from this — confirmed by testing, not just
+    # log-reading: the connector disconnect/reconnect that eventually shows
+    # up in the log is from physically unplugging and replugging the cable,
+    # not from niri retrying its way out on its own. Software force-redetect
+    # (writing `detect` to the connector's /sys/class/drm/.../status) might
+    # work instead of a physical replug, but that needs root and is
+    # untested — not wired up. For now the fix is unplug/replug the cable,
+    # or log out of niri entirely (the workaround reported on #3384).
+    #
+    # ***
+    #
     # noctalia is started by the compositor, not by a systemd user unit.
     # Upstream deprecated the systemd approach in favour of this. Do not also
     # add a unit — you get two shells.
