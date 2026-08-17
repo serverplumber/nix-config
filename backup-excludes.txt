@@ -4,14 +4,49 @@
 #
 # Rule for adding things here: exclude only what is RECONSTRUCTIBLE from
 # something else that is itself backed up or public. When in doubt, back it up.
+#
+# ***
+#
+# Rewritten 2026-08-16, after an accidental `rm -rf $HOME` made this file's
+# contents matter for real. The old "never" section blanket-excluded
+# Downloads, .local, .ollama, .tabby and .var by absolute path — directly
+# contradicting the rule above — and Downloads turned out to hold months of
+# unfiled invoices and books that no other copy existed of. Every exclude
+# below is now narrow and justified; nothing is excluded merely for being
+# large.
 
 # --- the big one -------------------------------------------------------------
 # ~96 GiB of podman images, measured 2026-08-08. All pullable from registries
 # or rebuildable from Containerfiles. This single line is most of the win.
 .local/share/containers
 
-# --- caches ------------------------------------------------------------------
-.cache
+# --- caches: named individually, NOT all of ~/.cache -------------------------
+# ~/.cache is deliberately no longer excluded wholesale. JetBrains keeps Local
+# History (its own file-revision store, the thing that survives an editor
+# crash) under ~/.cache, and on 2026-08-16 that would have been the only
+# remaining copy of several hours of uncommitted work — except it had been
+# excluded, so it wasn't. Skip the bulky regenerable parts by name; keep the
+# rest, including LocalHistory.
+.cache/huggingface
+.cache/torch
+.cache/whisper
+.cache/nix
+.cache/uv
+.cache/containers
+.cache/flatpak
+.cache/Homebrew
+.cache/thumbnails
+.cache/mesa_shader_cache
+.cache/mesa_shader_cache_db
+.cache/nvidia
+.cache/Proton
+.cache/BraveSoftware
+.cache/vivaldi
+.cache/mozilla
+.cache/JetBrains/*/caches
+.cache/JetBrains/*/index
+.cache/JetBrains/*/compile-server
+.cache/JetBrains/*/log
 .local/share/Trash
 .local/state/nix
 .local/share/uv/python
@@ -26,28 +61,32 @@
 **/__pycache__
 **/.venv
 **/.direnv
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
 **/target/debug
 **/target/release
 **/result
 **/result-*
 
-# --- things being deliberately abandoned in the migration --------------------
-# Present today, will not exist on NixOS. See package-migration.md §4.
+# --- large redistributable model weights -------------------------------------
+# Only the weights, not the surrounding config: ~/.ollama and ~/.tabby
+# themselves are backed up, so settings and manifests survive and the models
+# re-pull on demand.
+.ollama/models
+.tabby/models
+
+# --- Bluefin-era leftovers ----------------------------------------------------
+# Flatpak per-app data; NixOS uses none of it (no flatpak — see CLAUDE.md).
+# AppImages likewise: nixpkgs is the only package source, so a stray AppImage
+# is by definition disposable.
+.var/app
 AppImages
 .local/share/JetBrains/Toolbox
 
-# --- never ------------------------------------------------------------------
-# /nix is a build artifact and enormous. Listed for the reader's benefit; the
-# backup paths do not include it anyway.
-/nix
-/home/stablefly/Downloads
-/home/stablefly/.tabby/models
-/home/stablefly/.tabby
-/home/stablefly/.var/app
-/home/stablefly/.var
-/home/stablefly/Downloads/iso
-/home/stablefly/Downloads/Prints
-/home/stablefly/.ollama/models
-/home/stablefly/.ollama
-/home/stablefly/.local
-/home/stablefly/.local/share
+# --- bulky and trivially re-fetched -------------------------------------------
+# NOTE: ~/Downloads ITSELF is backed up now. Only these two subdirectories are
+# skipped — installer images and sliced print jobs, both re-fetchable and both
+# measured in tens of GiB.
+Downloads/iso
+Downloads/Prints
