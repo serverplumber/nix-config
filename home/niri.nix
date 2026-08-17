@@ -142,6 +142,11 @@
       # errors "unknown command"). Fixed while moving this off Super+Alt+L.
       # Mod+Shift+Backspace deliberately left alone — reserved in case
       # Shift+Backspace ever becomes Delete on the QMK layer.
+      #
+      # ⚠️ modules/sdbackup.nix mkForce's this bind to lock *and* raise the
+      # "your backup card isn't in the machine" reminder. Editing the line
+      # below will therefore appear to do nothing — change it there, not here.
+      # Mod+Alt+Backspace (lock + caffeine) is untouched by that module.
       "Mod+Backspace".action =
         spawn "${config.programs.noctalia.package}/bin/noctalia" "msg" "session"
           "lock";

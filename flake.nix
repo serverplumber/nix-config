@@ -45,6 +45,16 @@
       url = "github:noctalia-dev/noctalia";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # Declarative Plasma settings. Pulled in for exactly one reason: the
+    # SD-card backup binds (modules/sdbackup.nix) have to exist in all three
+    # sessions, and Plasma's shortcuts live in kglobalshortcutsrc, which Plasma
+    # rewrites at runtime — so seeding it with home.file would silently drift.
+    plasma-manager = {
+      url = "github:nix-community/plasma-manager";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.home-manager.follows = "home-manager";
+    };
   };
 
   outputs =
@@ -72,6 +82,11 @@
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
           home-manager.extraSpecialArgs = { inherit inputs; };
+
+          # plasma-manager is a home-manager module, and modules/sdbackup.nix
+          # sets programs.plasma.* through home-manager.users — so it has to be
+          # available to every user config, not imported from home/.
+          home-manager.sharedModules = [ inputs.plasma-manager.homeModules.plasma-manager ];
 
           # /home is a carried-over subvolume full of pre-existing dotfiles.
           # Without this, home-manager aborts on the first file it would

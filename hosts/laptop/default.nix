@@ -19,9 +19,12 @@
     ../../modules/printing.nix
     ../../modules/nix-ld.nix
     ../../modules/backup.nix
+    ../../modules/sdbackup.nix
     ../../modules/cuda.nix
     ../../modules/caches.nix
   ];
+
+  services.sdbackup.enable = true;
 
   networking.hostName = "laptop";
   networking.networkmanager.enable = true;
