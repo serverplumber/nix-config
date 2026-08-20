@@ -39,6 +39,38 @@ let
         postFixupHooks+=(_fixDeadSelfcontainedRpath)
       '';
     });
+
+  # Launching a JetBrains IDE from a terminal is the whole point — it's how
+  # the IDE inherits the calling shell's env (project devShell/direnv), which
+  # a desktop-file launch never would. But run plain, the IDE ties up that
+  # terminal until it quits, and everything it prints to stdout/stderr (JVM
+  # crashes, plugin errors, the dead-RPATH class of bug fixed above) just
+  # scrolls past and is gone. This wraps the launcher so it detaches
+  # immediately and logs somewhere that outlives the terminal.
+  #
+  # `lib.hiPrio` makes this win the home.packages profile's bin/<name>
+  # collision against the real IDE package below it in the same list — that
+  # package is still installed in full (icons, desktop entry, every other
+  # bin/* helper), only its own bin/<name> entry loses the collision.
+  #
+  # setsid fully detaches the IDE into its own session (survives the
+  # terminal closing) without touching its inherited environment at all —
+  # no env -i, no re-exec through a login shell — so whatever devShell/
+  # direnv env the calling shell had is exactly what the IDE gets.
+  jetbrainsCliWrapper =
+    pkg: binName:
+    pkgs.lib.hiPrio (
+      pkgs.writeShellScriptBin binName ''
+        logDir="$HOME/.local/state/jetbrains-logs"
+        ${pkgs.coreutils}/bin/mkdir -p "$logDir"
+        logFile="$logDir/${binName}-$(${pkgs.coreutils}/bin/date +%Y%m%d-%H%M%S)-$$.log"
+        ${pkgs.util-linux}/bin/setsid "${pkg}/bin/${binName}" "$@" \
+          > "$logFile" 2>&1 < /dev/null &
+        disown
+        ${pkgs.coreutils}/bin/ln -sf "$logFile" "$logDir/${binName}-latest.log"
+        echo "${binName} started in background (pid $!) — logging to $logFile"
+      ''
+    );
 in
 {
   # Language-AGNOSTIC tooling. The distinction that matters: everything here
@@ -116,6 +148,13 @@ in
     (jetbrainsFixDeadRpath jetbrains.idea) # 2026.2.0.1 — Ultimate via licence
     (jetbrainsFixDeadRpath jetbrains.goland) # 2026.2.0.1
     (jetbrainsFixDeadRpath jetbrains.pycharm) # 2026.2
+
+    # CLI launchers — see jetbrainsCliWrapper above for why these exist.
+    # Backgrounds the IDE and logs to ~/.local/state/jetbrains-logs instead
+    # of blocking/spamming whatever terminal `idea .` etc. was run from.
+    (jetbrainsCliWrapper (jetbrainsFixDeadRpath jetbrains.idea) "idea")
+    (jetbrainsCliWrapper (jetbrainsFixDeadRpath jetbrains.goland) "goland")
+    (jetbrainsCliWrapper (jetbrainsFixDeadRpath jetbrains.pycharm) "pycharm")
 
     ### These are large and unfree. allowUnfree is already set for the NVIDIA
     ### driver, so nothing extra is needed — but if a downloaded IDE plugin or
