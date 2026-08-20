@@ -82,6 +82,14 @@ let
                   pipewire = true;
                   pulse = pulseAudio;
                 };
+                # Private, per-launch tmpfs — none of these apps should be
+                # able to see the real host /tmp anyway, but several need
+                # *a* writable /tmp to exist at all. Without this bwrap
+                # simply doesn't create /tmp, and LibreOffice in particular
+                # dies immediately ("ERROR: no valid pipe path found") since
+                # it uses /tmp for its single-instance IPC socket — measured
+                # 2026-08-17.
+                tmpfs = [ "/tmp" ];
                 bind.rw = rw sloth;
                 bind.ro = ro sloth;
               };
@@ -242,6 +250,26 @@ let
     rw = sloth: [
       (sloth.concat' sloth.homeDir "/Documents")
       (sloth.concat' sloth.homeDir "/Downloads")
+      # bootstraprc sets UserInstallation=$SYSUSERCONFIG/libreoffice/4, i.e.
+      # ~/.config/libreoffice/4. Without this bind that directory can't be
+      # created inside the sandbox, and LO can't create its IPC pipe there
+      # either — it fails immediately with "ERROR: no valid pipe path
+      # found" before ever drawing a window. Measured 2026-08-17.
+      (sloth.concat' sloth.homeDir "/.config/libreoffice")
+    ];
+    ro = _: [
+      # VCL throws a fatal WrappedTargetRuntimeException at startup without
+      # a loadable fontconfig config — same two-hop symlink chain as
+      # stremio's CA-cert fix above: /etc/fonts -> /etc/static/fonts ->
+      # /nix/store/...; both /etc hops need binding, the store leg is
+      # already covered by the wholesale ro bind. Measured 2026-08-17.
+      "/etc/fonts"
+      "/etc/static/fonts"
+
+      # Without this LO repeatedly retries an ENOENT openat on /etc/passwd
+      # (user/home lookup) and then SIGABRTs outright instead of falling
+      # back gracefully — measured 2026-08-17 via strace.
+      "/etc/passwd"
     ];
   };
 in
@@ -374,6 +402,15 @@ in
   # the vault itself does. Without it, nixpak binds a non-existent path and
   # Obsidian opens to an empty picker.
   home.file."Documents/obsidian_vault/.keep".text = "";
+
+  # Same problem as the obsidian vault above, different symptom: bwrap's
+  # --bind-try silently skips a bind whose *source* doesn't exist on the
+  # host, so a never-before-created ~/.config/libreoffice bind target
+  # results in no config dir inside the sandbox at all. LibreOffice needs
+  # to write its UserInstallation profile there before it can even create
+  # its IPC pipe, so it dies immediately with "ERROR: no valid pipe path
+  # found" instead of drawing a window — measured 2026-08-17.
+  home.file.".config/libreoffice/.keep".text = "";
 
   # Keyboard-driven video. VLC is a mouse-first GUI; mpv is a window you shove
   # in a tiling slot and drive from the keyboard. With yt-dlp on PATH
