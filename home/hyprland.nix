@@ -6,6 +6,40 @@
 }:
 let
   hyprPkgs = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system};
+
+  # Hyprland has no built-in equivalent of niri's show-hotkey-overlay
+  # (checked hl.meta.lua — no such dispatcher exists), so this stands in for
+  # it. Hand-maintained rather than generated from `hyprctl binds`: the JSON
+  # that dispatcher list gives back (modmask ints, dispatcher class names,
+  # no per-bind description set below) is not something worth decoding in a
+  # shell one-liner for a list this short. Keep it in sync by hand when
+  # binds change below — same convention as the sdbackup.nix warning further
+  # down this file.
+  cheatsheet = pkgs.writeText "hyprland-cheatsheet.txt" ''
+    Hyprland — Important Hotkeys
+
+    mod + Q                   terminal
+    mod + C                   close window
+    mod + M                   exit session
+    mod + E                   file manager
+    mod + V                   toggle floating
+    mod + R                   launcher
+    mod + P                   pseudotile (dwindle only)
+    mod + backslash           toggle split (dwindle only)
+
+    mod + arrows/hjkl         move focus
+    mod + alt + arrows/hjkl   move window
+    mod + [0-9]               switch workspace
+    mod + shift + [0-9]       move window to workspace
+    mod + S                   toggle scratchpad
+    mod + shift + S           move window to scratchpad
+    mod + scroll              cycle workspaces
+
+    mod + LMB drag            move window
+    mod + RMB drag            resize window
+
+    mod + shift + /           this cheat sheet
+  '';
 in
 {
   # The home-manager module for Hyprland ships with home-manager itself, so
@@ -70,7 +104,39 @@ in
           touchpad = {
             natural_scroll = true,
             tap_to_click   = true,
+            -- 3-finger drag = click-and-drag (text selection, window drag,
+            -- etc.) via libinput's native emulated-button-press feature.
+            -- 1 = trigger on 3 fingers specifically; 2 would be 4 fingers
+            -- instead — verified the valid range is 0-2 live via
+            -- `hyprctl getoption input:touchpad:drag_3fg` (max-value error
+            -- above 2). Deliberately disjoint from the 4-finger workspace
+            -- swipe gesture below so the two never contend for the same
+            -- finger count.
+            drag_3fg = 1,
           },
+        },
+      })
+
+      -- 4-finger horizontal swipe = switch workspace. Hyprland's own
+      -- shipped default binds this to 3 fingers instead (see
+      -- ${hyprPkgs.hyprland}/share/hypr/hyprland.lua) — bumped to 4 here so
+      -- it doesn't collide with the 3-finger drag-to-select above; both
+      -- verified live via `hyprctl eval` not to conflict.
+      hl.gesture({
+        fingers   = 4,
+        direction = "horizontal",
+        action    = "workspace",
+      })
+
+      --------------------------------------------------------------- layout
+      -- Explicit even though dwindle is Hyprland's own built-in default
+      -- (confirmed in ${hyprPkgs.hyprland}/share/hypr/hyprland.lua) — it's
+      -- what the Mod+P (pseudotile) and Mod+backslash (togglesplit) binds
+      -- below assume, and what the vi-style focus/move binds are built for
+      -- (a plain 2D grid, not niri's scrolling columns).
+      hl.config({
+        general = {
+          layout = "dwindle",
         },
       })
 
@@ -115,13 +181,42 @@ in
       hl.bind(mod .. " + V", hl.dsp.window.float({ action = "toggle" }))
       hl.bind(mod .. " + R", hl.dsp.exec_cmd(menu))
       hl.bind(mod .. " + P", hl.dsp.window.pseudo())
-      hl.bind(mod .. " + J", hl.dsp.layout("togglesplit"))    -- dwindle only
+      -- Wiki-default key for this is Mod+J, but J is taken below by the
+      -- vi-style focus-movement remap (mirrors home/niri.nix's own
+      -- deviation for the same reason — see CLAUDE.md's Keyboard section).
+      -- Backslash is the physical key under Backspace on the Preonic.
+      hl.bind(mod .. " + backslash", hl.dsp.layout("togglesplit"))    -- dwindle only
 
-      -- Move focus with mod + arrow keys
+      -- "slash" verified live via `hyprctl eval 'hl.bind("SUPER + SHIFT +
+      -- slash", ...)'` — it's a valid Hyprland key name (xkbcommon keysym),
+      -- same as niri's Mod+Shift+Slash for its built-in show-hotkey-overlay.
+      hl.bind(mod .. " + SHIFT + slash", hl.dsp.exec_cmd(
+        "${pkgs.foot}/bin/foot -e ${pkgs.less}/bin/less ${cheatsheet}"))
+
+      -- Move focus with mod + arrow keys, or mod + hjkl (vi-style — same
+      -- reasoning as home/niri.nix's hjkl remap, see CLAUDE.md's Keyboard
+      -- section). Unlike niri's scrolling-columns model, dwindle is a plain
+      -- 2D grid, so hjkl map straight to the cardinal directions here
+      -- (h/j/k/l = left/down/up/right) rather than niri's split
+      -- column-axis/workspace-axis scheme.
       hl.bind(mod .. " + left",  hl.dsp.focus({ direction = "left" }))
       hl.bind(mod .. " + right", hl.dsp.focus({ direction = "right" }))
       hl.bind(mod .. " + up",    hl.dsp.focus({ direction = "up" }))
       hl.bind(mod .. " + down",  hl.dsp.focus({ direction = "down" }))
+      hl.bind(mod .. " + h", hl.dsp.focus({ direction = "left" }))
+      hl.bind(mod .. " + l", hl.dsp.focus({ direction = "right" }))
+      hl.bind(mod .. " + k", hl.dsp.focus({ direction = "up" }))
+      hl.bind(mod .. " + j", hl.dsp.focus({ direction = "down" }))
+
+      -- Move the focused window with mod + alt + arrow keys/hjkl.
+      hl.bind(mod .. " + ALT + left",  hl.dsp.window.move({ direction = "left" }))
+      hl.bind(mod .. " + ALT + right", hl.dsp.window.move({ direction = "right" }))
+      hl.bind(mod .. " + ALT + up",    hl.dsp.window.move({ direction = "up" }))
+      hl.bind(mod .. " + ALT + down",  hl.dsp.window.move({ direction = "down" }))
+      hl.bind(mod .. " + ALT + h", hl.dsp.window.move({ direction = "left" }))
+      hl.bind(mod .. " + ALT + l", hl.dsp.window.move({ direction = "right" }))
+      hl.bind(mod .. " + ALT + k", hl.dsp.window.move({ direction = "up" }))
+      hl.bind(mod .. " + ALT + j", hl.dsp.window.move({ direction = "down" }))
 
       -- Switch workspaces with mod + [0-9]
       -- Move active window to a workspace with mod + SHIFT + [0-9]
