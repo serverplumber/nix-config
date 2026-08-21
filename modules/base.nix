@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 {
   # System-level tooling: things which must work as root, before a user
   # session exists, or while the desktop is bork. Anything that is merely
@@ -36,6 +36,38 @@
     # and the flake's devShell is therefore not reachable.
     nix-tree
   ];
+
+  # ***
+
+  # CA trust for software built against a non-nixpkgs OpenSSL.
+  #
+  # NixOS's security/ca.nix writes exactly four paths — ssl/certs/{ca-bundle,
+  # ca-certificates}.crt, pki/tls/certs/ca-bundle.crt and ssl/trust-source —
+  # and deliberately not /etc/ssl/cert.pem, which is the BSD/macOS convention.
+  # Anything compiled elsewhere with the stock OPENSSLDIR=/etc/ssl looks for
+  # exactly that file.
+  #
+  # uv's standalone CPython is the case that bit here. It ships its own
+  # OpenSSL 3.5.7, so it checks /etc/ssl/cert.pem (absent), falls back to
+  # capath=/etc/ssl/certs (present) — and finds nothing, because a capath
+  # needs `openssl rehash` hash symlinks and NixOS puts only two bundle files
+  # there. Every TLS call then fails with CERTIFICATE_VERIFY_FAILED:
+  #
+  #   ssl.create_default_context().get_ca_certs()  ->  0 certs
+  #
+  # Belt and braces, because the two mechanisms cover different software:
+  # the symlink fixes anything that hardcodes the path, while SSL_CERT_FILE
+  # is what OpenSSL, requests/certifi and most language runtimes consult
+  # first. Neither weakens verification — both point at the same system CA
+  # bundle the rest of the machine already trusts.
+  #
+  # NOT a fix for containers: a container has its own /etc/ssl, so a rootless
+  # podman image with this problem needs the bundle mounted in or baked into
+  # the image instead.
+  environment.etc."ssl/cert.pem".source =
+    config.environment.etc."ssl/certs/ca-certificates.crt".source;
+
+  environment.sessionVariables.SSL_CERT_FILE = "/etc/ssl/certs/ca-certificates.crt";
 
   # Nerd Fonts, system-wide so every terminal/bar/prompt has icon glyphs
   # available regardless of which user or session is active. JetBrainsMono
