@@ -147,9 +147,15 @@
       # "your backup card isn't in the machine" reminder. Editing the line
       # below will therefore appear to do nothing — change it there, not here.
       # Mod+Alt+Backspace (lock + caffeine) is untouched by that module.
-      "Mod+Backspace".action =
-        spawn "${config.programs.noctalia.package}/bin/noctalia" "msg" "session"
-          "lock";
+      #
+      # caffeine-disable after lock: a plain lock overrides whatever caffeine
+      # state was left over from an earlier Mod+Alt+Backspace, same reasoning
+      # as modules/sdbackup.nix's lockThen — a lock key should leave caffeine
+      # in a known state, not whatever it happened to be.
+      "Mod+Backspace".action = spawn-sh ''
+        ${config.programs.noctalia.package}/bin/noctalia msg session lock
+        ${config.programs.noctalia.package}/bin/noctalia msg caffeine-disable
+      '';
       "Mod+Alt+Backspace".action = spawn-sh ''
         ${config.programs.noctalia.package}/bin/noctalia msg session lock
         ${config.programs.noctalia.package}/bin/noctalia msg caffeine-enable

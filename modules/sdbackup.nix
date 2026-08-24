@@ -57,10 +57,19 @@ let
   # never be able to stop the screen from locking. If sdbackup is broken the
   # worst outcome allowed is "no backup", never "laptop left unlocked" — hence
   # the lock on its own line, ahead of everything, and `|| true` after.
+  #
+  # caffeine-disable right after: every lock action must leave caffeine in a
+  # known state rather than inheriting whatever it happened to be before —
+  # otherwise a caffeine left on from an earlier lockAndBackup run silently
+  # survives a later plain lock and the machine never idles/suspends while
+  # locked. `extra` runs after, so lockAndBackup's own caffeine-enable below
+  # still wins for that path — this is the "off unless something asks for
+  # on" default, not a ban on caffeine.
   lockThen =
     name: extra:
     pkgs.writeShellScript "sdbackup-${name}" ''
       ${noctalia} msg session lock
+      ${noctalia} msg caffeine-disable
       ${extra}
     '';
 
@@ -166,8 +175,15 @@ in
         };
 
       # Hyprland. `extraConfig` is a `lines` option, so this appends to the Lua
-      # in home/hyprland.nix rather than colliding with it. Hyprland had no
-      # lock bind at all before this, so both binds here are new.
+      # in home/hyprland.nix rather than colliding with it — but unlike
+      # niri's structured binds set above, a `lines` option has no
+      # mkForce/override mechanism, so this must never bind a combo that
+      # home/hyprland.nix also binds (two hl.bind() calls on the same combo
+      # would race). "SUPER + Backspace" and "SUPER + b" are both new here
+      # for exactly that reason. "SUPER + ALT + Backspace" (lock + caffeine)
+      # is the one exception: it's bound in home/hyprland.nix itself, not
+      # here, mirroring niri's "Mod+Alt+Backspace is deliberately NOT
+      # touched" above — same key, deliberately left alone by this module.
       wayland.windowManager.hyprland.extraConfig = ''
 
         ---------------------------------------------------------------- sdbackup

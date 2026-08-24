@@ -18,14 +18,20 @@ let
   cheatsheet = pkgs.writeText "hyprland-cheatsheet.txt" ''
     Hyprland — Important Hotkeys
 
-    mod + Q                   terminal
-    mod + C                   close window
-    mod + M                   exit session
+    mod + T                   terminal
+    mod + Q                   close window
+    mod + C                   center window
+    mod + M                   maximize window
+    mod + shift + E           exit session
     mod + E                   file manager
     mod + V                   toggle floating
-    mod + R                   launcher
+    mod + D                   launcher
     mod + P                   pseudotile (dwindle only)
     mod + backslash           toggle split (dwindle only)
+    mod + alt + backspace     lock + caffeine
+
+    mod + backspace           lock (see modules/sdbackup.nix)
+    mod + b                   lock + caffeine + SD backup (see modules/sdbackup.nix)
 
     mod + arrows/hjkl         move focus
     mod + alt + arrows/hjkl   move window
@@ -155,15 +161,26 @@ in
 
       ---------------------------------------------------------------- basics
       --
-      -- This mirrors Hyprland's own shipped example hyprland.lua bind-for-
-      -- bind (see ${hyprPkgs.hyprland}/share/hypr/hyprland.lua) — with only
-      -- the program names swapped for what's actually installed here: foot
-      -- for the terminal, noctalia for the launcher (there is no separate
-      -- app-launcher package on this machine; dolphin is already installed
-      -- as the file manager, so SUPER+E is unchanged). Deliberate: until
-      -- it's decided whether niri/Hyprland stick around at all, the
-      -- bindings should match what the Hyprland wiki teaches, not a
-      -- personal remap.
+      -- No longer a bind-for-bind mirror of Hyprland's shipped example
+      -- hyprland.lua. That mirroring was itself the bug: niri (home/niri.nix)
+      -- was left on its own wiki-default binds, so the same key meant two
+      -- different things depending which compositor happened to be running
+      -- — worst offenders were Mod+Q (spawn terminal here vs. close window
+      -- in niri) and Mod+M (exit session here vs. maximize window in niri).
+      -- Muscle memory doesn't know which session it's in, so the keys below
+      -- are now realigned to match niri's letter for the same action
+      -- wherever dwindle has a sane equivalent. File manager (Mod+E),
+      -- pseudotile (Mod+P), and scratchpad (Mod+S / Mod+Shift+S) are kept
+      -- as-is — niri has no launcher-adjacent/pseudotile/scratchpad binds
+      -- to collide with, so there was nothing to realign.
+      --
+      -- Mod+R (niri: switch-preset-column-width) and Mod+F (niri:
+      -- maximize-column) are deliberately left unbound here: dwindle is a
+      -- binary-tree layout with no "column" concept, so neither has a
+      -- non-fake equivalent. Mod+M (window.fullscreen(1), Hyprland's
+      -- "maximize" — fills the screen without going true-fullscreen)
+      -- already covers the "fill available space" case both of those
+      -- niri actions gesture at.
       --
       -- Note there is no default screenshot bind and no default lock bind —
       -- Hyprland's example config doesn't set either (niri's does, via
@@ -171,16 +188,38 @@ in
       local terminal = "${pkgs.foot}/bin/foot"
       local fileManager = "${pkgs.kdePackages.dolphin}/bin/dolphin"
       local menu = "${config.programs.noctalia.package}/bin/noctalia msg panel-toggle launcher"
-
-      hl.bind(mod .. " + Q", hl.dsp.exec_cmd(terminal))
-      hl.bind(mod .. " + C", hl.dsp.window.close())
       -- Shipped default text was "hyprctl dispatch 'hl.dsp.exit()'", which
       -- is not a valid dispatcher — normalized to the real exit dispatcher.
-      hl.bind(mod .. " + M", hl.dsp.exec_cmd("command -v hyprshutdown >/dev/null 2>&1 && hyprshutdown || hyprctl dispatch exit"))
-      hl.bind(mod .. " + E", hl.dsp.exec_cmd(fileManager))
-      hl.bind(mod .. " + V", hl.dsp.window.float({ action = "toggle" }))
-      hl.bind(mod .. " + R", hl.dsp.exec_cmd(menu))
-      hl.bind(mod .. " + P", hl.dsp.window.pseudo())
+      local exitSession = "command -v hyprshutdown >/dev/null 2>&1 && hyprshutdown || hyprctl dispatch exit"
+
+      hl.bind(mod .. " + T", hl.dsp.exec_cmd(terminal))               -- niri: Mod+T
+      hl.bind(mod .. " + Q", hl.dsp.window.close())                   -- niri: Mod+Q
+      hl.bind(mod .. " + C", hl.dsp.window.center())                  -- niri: Mod+C (center-column)
+      hl.bind(mod .. " + M", hl.dsp.window.fullscreen(1))             -- niri: Mod+M (maximize-window-to-edges)
+      hl.bind(mod .. " + SHIFT + E", hl.dsp.exec_cmd(exitSession))    -- niri: Mod+Shift+E (quit)
+      hl.bind(mod .. " + E", hl.dsp.exec_cmd(fileManager))            -- kept
+      hl.bind(mod .. " + V", hl.dsp.window.float({ action = "toggle" })) -- already matches niri
+      hl.bind(mod .. " + D", hl.dsp.exec_cmd(menu))                   -- niri: Mod+D
+      hl.bind(mod .. " + P", hl.dsp.window.pseudo())                  -- kept
+
+      -- Mod+Alt+Backspace: lock + caffeine, mirroring home/niri.nix's own
+      -- bind (untouched by modules/sdbackup.nix on either compositor — that
+      -- module only owns plain Backspace and Mod+b). caffeine-enable is an
+      -- absolute set, not a toggle, so this always ends caffeinated
+      -- regardless of prior state — same "lock overrides caffeine" reasoning
+      -- as niri's bind and sdbackup.nix's lockThen.
+      --
+      -- Plain Mod+Backspace (lock only) is deliberately NOT bound here.
+      -- modules/sdbackup.nix already binds "SUPER + Backspace" via this
+      -- file's extraConfig (a `lines` option, plain string concatenation —
+      -- unlike niri's structured binds set, there is no mkForce/override
+      -- mechanism for Hyprland's Lua config, so a second hl.bind() on the
+      -- same combo here would just race the one sdbackup.nix adds). Add the
+      -- lock-only bind there, not here, if sdbackup.nix is ever disabled.
+      hl.bind(mod .. " + ALT + Backspace", hl.dsp.exec_cmd(
+        "${config.programs.noctalia.package}/bin/noctalia msg session lock && " ..
+        "${config.programs.noctalia.package}/bin/noctalia msg caffeine-enable"))
+
       -- Wiki-default key for this is Mod+J, but J is taken below by the
       -- vi-style focus-movement remap (mirrors home/niri.nix's own
       -- deviation for the same reason — see CLAUDE.md's Keyboard section).
