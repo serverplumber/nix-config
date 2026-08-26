@@ -205,6 +205,15 @@ let
     rw = sloth: [
       (sloth.concat' sloth.homeDir "/.stremio-server")
       (sloth.concat' sloth.homeDir "/.config/stremio")
+      # WebKitGTK's website-data dir (localStorage/IndexedDB) — this is where
+      # the Stremio web UI actually keeps installed addons and
+      # continue-watching/history client-side, distinct from the server
+      # state in ~/.stremio-server above. The shell binary resolves it via
+      # the `dirs` crate to $XDG_DATA_HOME/stremio. Without this bind it's
+      # invisible to the sandbox, silently falls back to the ephemeral
+      # per-launch scratch home, and both are gone on every restart —
+      # measured 2026-08-24.
+      (sloth.concat' sloth.homeDir "/.local/share/stremio")
       (sloth.concat' sloth.homeDir "/Downloads")
     ];
     ro = _: [
