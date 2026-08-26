@@ -202,6 +202,19 @@ let
     # with "Failed to register: GDBus.Error:...ServiceUnknown", and the app
     # exits immediately before drawing a window — measured 2026-08-14.
     ownBus = [ "com.stremio.Stremio" ];
+    # ⚠️ Every homeDir path in this list ALSO needs a `.keep` in home.file
+    # below, or it does nothing at all. nixpak emits bwrap `--bind-try`,
+    # which silently skips a bind whose source is missing on the host — and
+    # bwrap's root is a writable tmpfs, so the app then cheerfully
+    # `mkdir -p`s that exact path *inside* the sandbox. A missing host dir
+    # therefore never errors; it yields a scratch copy that dies with the
+    # process. This — not a wrong path — is why addons and history kept
+    # vanishing across the 2026-08-14 and 2026-08-24 attempts: none of these
+    # three dirs had ever existed on the host, so all three binds were
+    # no-ops the whole time. Verified 2026-08-26 by reading
+    # /proc/<pid>/root/home/stablefly of a live sandbox: .stremio-server,
+    # .config and .local were all tmpfs dirs stamped with the launch time,
+    # while Downloads (the one path that does exist) kept its real mtime.
     rw = sloth: [
       (sloth.concat' sloth.homeDir "/.stremio-server")
       (sloth.concat' sloth.homeDir "/.config/stremio")
@@ -209,10 +222,13 @@ let
       # the Stremio web UI actually keeps installed addons and
       # continue-watching/history client-side, distinct from the server
       # state in ~/.stremio-server above. The shell binary resolves it via
-      # the `dirs` crate to $XDG_DATA_HOME/stremio. Without this bind it's
-      # invisible to the sandbox, silently falls back to the ephemeral
-      # per-launch scratch home, and both are gone on every restart —
-      # measured 2026-08-24.
+      # the `dirs` crate to $XDG_DATA_HOME/stremio; the payload is
+      # storage/<origin-hash>/<origin-hash>/LocalStorage/localstorage.sqlite3
+      # (keys: profile, library, installation_id, …). The origin is
+      # http://127.0.0.1:11470 — the shell loads the UI through its own
+      # server's /proxy/ rather than from web.stremio.com, and that port is
+      # fixed, so the origin hash is stable across launches and the same
+      # store is reused every time. Confirmed 2026-08-26.
       (sloth.concat' sloth.homeDir "/.local/share/stremio")
       (sloth.concat' sloth.homeDir "/Downloads")
     ];
@@ -420,6 +436,23 @@ in
   # its IPC pipe, so it dies immediately with "ERROR: no valid pipe path
   # found" instead of drawing a window — measured 2026-08-17.
   home.file.".config/libreoffice/.keep".text = "";
+
+  # Same `--bind-try` trap again, and the reason Stremio kept losing its
+  # addons and watch history: all three of its rw binds pointed at dirs that
+  # had never been created on the host, so bwrap skipped every one and the
+  # app wrote to its per-launch tmpfs instead. Creating them here is what
+  # actually makes those binds take effect — see the ⚠️ block on stremio's
+  # rw list above for the full mechanism and how it was measured.
+  #
+  # .local/share/stremio is the one that carries addons + history (WebKit
+  # localStorage); .stremio-server is the streaming server's settings and
+  # cache. .config/stremio is unused by stremio-linux-shell 1.1.4 — it never
+  # creates it — but it's cheap to keep bound and pre-created so that a
+  # future version reaching for it doesn't silently reintroduce this exact
+  # bug.
+  home.file.".local/share/stremio/.keep".text = "";
+  home.file.".stremio-server/.keep".text = "";
+  home.file.".config/stremio/.keep".text = "";
 
   # Keyboard-driven video. VLC is a mouse-first GUI; mpv is a window you shove
   # in a tiling slot and drive from the keyboard. With yt-dlp on PATH
