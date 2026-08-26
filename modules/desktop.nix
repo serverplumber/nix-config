@@ -91,6 +91,25 @@
 
   fonts.enableDefaultPackages = true;
 
+  # KDE apps (Dolphin, Okular, kioclient, ...) resolve file-type associations
+  # by asking KService for a menu file named "${XDG_MENU_PREFIX}applications.menu".
+  # A real Plasma session sets XDG_MENU_PREFIX=plasma- itself via its startup
+  # scripts, which is why the module below (modules/plasma.nix) only ships
+  # plasma-applications.menu, not a plain applications.menu. niri and Hyprland
+  # never set that variable, so under either of them KService looked for a
+  # menu file that doesn't exist, silently gave up, and never indexed a single
+  # .desktop file into KSycoca — not just Okular's, ALL of them, including
+  # Dolphin's own. The visible symptom: double-clicking any file in Dolphin
+  # opened an empty "choose an application" dialog with zero suggestions,
+  # confirmed via `QT_LOGGING_RULES="kf.service.*.debug=true" kioclient exec`,
+  # which logged "query for mimeType ... returning 0 offers" for every
+  # mimetype tried, and kbuildsycoca6 itself logging
+  # `Menu "applications.menu" not found.` — measured 2026-08-25. Setting the
+  # same prefix niri/Hyprland already reuses (plasma-applications.menu, via
+  # modules/plasma.nix) fixes this for all three sessions with no conflict:
+  # Plasma sets the identical value itself.
+  environment.sessionVariables.XDG_MENU_PREFIX = "plasma-";
+
   # Both compositors want a portal. niri-flake and programs.hyprland each wire
   # their own wlr/hyprland portal; kde and gtk cover the rest between them —
   # see the xdg.portal.config comment below for how those two are split.
