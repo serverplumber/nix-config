@@ -457,6 +457,16 @@ in
     };
   };
 
+  # foot, moved here from modules/desktop.nix (see the comment there).
+  # Deliberately left at stock defaults, no `settings` block: foot's
+  # out-of-the-box bindings already are the X11 clipboard model. Dragging a
+  # selection copies it to the primary selection, BTN_MIDDLE — a 3-finger tap
+  # on this trackpad — pastes primary back, and Control+Shift+c/v are the
+  # clipboard pair. Shift+drag (foot's `selection-override-modifiers`) takes
+  # the selection back from a TUI that has grabbed the mouse, which is what
+  # makes copying out of helix work.
+  programs.foot.enable = true;
+
   xdg.mimeApps.defaultApplications =
     let
       videoMimeTypes = [

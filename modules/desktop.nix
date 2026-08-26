@@ -83,8 +83,18 @@
   # it gets to make that choice itself and the greeter can light up HDMI.
   # The KWIN_DRM_DEVICES escape hatch above is there if that bet is wrong.
 
+  # foot deliberately lives in home/gui.nix (`programs.foot`), not here — it's
+  # a user-facing app, and home-manager's module is what would write foot.ini
+  # if it ever needs one. Installing it in both places would put two copies on
+  # PATH with the home one shadowing the system one, which gets confusing the
+  # moment only one of them carries config. The compositors spawn it by store
+  # path (`${pkgs.foot}/bin/foot` in home/niri.nix and home/hyprland.nix), so
+  # they never depended on it being on PATH at all.
+  #
+  # The installer ISO does not import this module (it has its own package list
+  # in flake.nix), so dropping foot here does not leave the live system
+  # without a terminal.
   environment.systemPackages = with pkgs; [
-    foot # terminal
     wl-clipboard
   ];
   # No wmenu, no swaybg: noctalia supplies the launcher and the wallpaper.
