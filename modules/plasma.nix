@@ -13,9 +13,14 @@
   # — helix is the editor here (home/dev.nix).
   environment.plasma6.excludePackages = with pkgs.kdePackages; [ kate ];
 
-  # Plasma normally brings SDDM. It is deliberately NOT enabled — greetd owns
-  # login for all three sessions.
-  services.displayManager.sddm.enable = false;
+  # SDDM is Plasma's own display manager and it DOES own login here, for all
+  # three sessions — but it is enabled in modules/desktop.nix rather than
+  # from this file, because it greets niri and Hyprland too and is not a
+  # Plasma-specific concern. Do not also set it here: two definitions of
+  # `services.displayManager.sddm.enable` conflict.
+  #
+  # (It was pinned to `false` here until 2026-08-25, when greetd + ReGreet
+  # owned login instead. See the greeter history in modules/desktop.nix.)
 
   # noctalia is spawned by the niri and Hyprland configs specifically, never
   # globally, so it does not appear in the Plasma session and there is no

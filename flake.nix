@@ -162,12 +162,15 @@
                   ];
                 };
 
-                # NB: `services.greetd.settings.initial_session` was here
-                # briefly as a diagnostic — it auto-logs straight into a
-                # session and so SKIPS THE GREETER ENTIRELY, every boot, not
-                # just once. Useful for capturing a compositor's journal,
-                # useless for testing the login screen. Removed; re-add
-                # temporarily if a session needs interrogating again.
+                # NB: an autologin option was here briefly as a diagnostic —
+                # it goes straight into a session and so SKIPS THE GREETER
+                # ENTIRELY, every boot, not just once. Useful for capturing a
+                # compositor's journal, useless for testing the login screen.
+                # Removed; re-add temporarily if a session needs
+                # interrogating again. Under SDDM the equivalent knob is
+                # `services.displayManager.autoLogin`, not the
+                # `services.greetd.settings.initial_session` this note
+                # originally referred to.
 
                 # Debug affordance for the VM only: root autologin on the
                 # serial console, so boot problems can be interrogated by
