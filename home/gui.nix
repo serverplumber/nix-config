@@ -500,22 +500,68 @@ in
   # makes copying out of helix work.
   programs.foot.enable = true;
 
-  xdg.mimeApps.defaultApplications =
-    let
-      videoMimeTypes = [
-        "video/mp4"
-        "video/x-matroska"
-        "video/webm"
-        "video/quicktime"
-        "video/x-msvideo"
-        "video/mpeg"
-        "video/ogg"
-        "video/x-flv"
-        "video/x-ms-wmv"
-        "video/3gpp"
-      ];
-    in
-    pkgs.lib.genAttrs videoMimeTypes (_: "mpv.desktop");
+  # Double-clicking a text file opens helix in foot, rooted at that file's
+  # directory. Two things make the obvious approaches unreliable:
+  #
+  #   - The packaged Helix.desktop is `Terminal=true`, which hands "find a
+  #     terminal" to whatever launched it. There is no agreed answer on a bare
+  #     Wayland compositor: GIO hunts for gnome-terminal/xterm and gives up if
+  #     neither is installed (neither is, here), while KIO reads KDE's own
+  #     TerminalApplication setting. Under niri or Hyprland that is a coin
+  #     flip, so this entry is `terminal = false` and names foot itself.
+  #   - Exec= is not shell-interpreted, so the working directory cannot be
+  #     derived from %F inline — hence the wrapper script.
+  #
+  # This reuses the desktop ID `Helix.desktop` rather than adding a second
+  # entry: ~/.local/share/applications outranks the profile for a given ID, so
+  # this SHADOWS the packaged entry instead of sitting beside it in the
+  # launcher. Which also means the packaged MimeType= line disappears with it —
+  # the associations now come from modules/mime.nix, same as LibreOffice.
+  xdg.desktopEntries.Helix = {
+    name = "Helix";
+    genericName = "Text Editor";
+    icon = "helix";
+    terminal = false;
+    categories = [
+      "Utility"
+      "TextEditor"
+      "Development"
+    ];
+    exec = "${pkgs.writeShellScript "helix-in-foot" ''
+      # The file manager passes absolute paths, so the first argument's parent
+      # is the directory to start in — that is what makes helix's file picker
+      # and :open land somewhere useful rather than in $PWD of the compositor.
+      # No arguments means this came from the launcher, not from a file.
+      if [ "$#" -gt 0 ]; then
+        dir=$(${pkgs.coreutils}/bin/dirname -- "$1")
+      else
+        dir=$HOME
+      fi
+
+      # No `--` before hx: foot stops parsing options at the first non-option
+      # argument and treats the rest as the command, so the separator is both
+      # unnecessary and not accepted consistently across foot versions.
+      exec ${pkgs.foot}/bin/foot \
+        --app-id=helix \
+        --working-directory="$dir" \
+        ${pkgs.helix}/bin/hx "$@"
+    ''} %F";
+  };
+
+  # Deliberately empty. Every actual default lives in modules/mime.nix
+  # (/etc/xdg/mimeapps.list); this exists only so ~/.config/mimeapps.list is a
+  # read-only store symlink instead of a file Brave and Vivaldi take turns
+  # rewriting. An empty [Default Applications] claims no mimetype, so every
+  # lookup falls through to the system file — read the header of
+  # modules/mime.nix before adding anything here, because anything that IS
+  # added outranks the system defaults for that one mimetype.
+  #
+  # The video associations that used to be here never took effect: this option
+  # was left at its default of false, so home-manager wrote no file at all.
+  #
+  # Enabling this also takes over ~/.local/share/applications/mimeapps.list —
+  # home-manager points the deprecated location at the same store file.
+  xdg.mimeApps.enable = true;
 
   # Browsers are installed the ordinary way on purpose. They keep full access
   # to $HOME, same as on any other distro — sandboxing them is Tier 2 and is

@@ -209,13 +209,10 @@ in
     # So a "Launch Meeting" button on a Zoom page reaches the web client rather
     # than dead-ending on a native client that isn't installed.
     #
-    # This claim is inert as things stand: xdg.mimeApps.enable is false, so
-    # home-manager writes no mimeapps.list and ~/.config/mimeapps.list is still
-    # the unmanaged Bluefin-era file. That is a pre-existing gap, not one this
-    # module introduces — the mpv video associations in home/gui.nix are dead
-    # for the same reason. Turning it on means taking that file over, so it is
-    # left as its own decision. The launcher and `zoom-web <url>` work either
-    # way.
+    # Declaring the scheme here only advertises that this entry *can* handle
+    # it; what makes it the actual default is modules/mime.nix, which names
+    # zoom.desktop for both schemes in /etc/xdg/mimeapps.list. Keep the two in
+    # step — dropping either one leaves the scheme unhandled.
     mimeType = [
       "x-scheme-handler/zoommtg"
       "x-scheme-handler/zoomus"

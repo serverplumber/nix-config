@@ -5,6 +5,7 @@
   imports = [
     ../../modules/base.nix
     ../../modules/desktop.nix
+    ../../modules/mime.nix
     ../../modules/niri.nix
     ../../modules/hyprland.nix
     ../../modules/plasma.nix
