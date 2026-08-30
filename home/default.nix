@@ -11,6 +11,7 @@
     ./niri.nix
     ./hyprland.nix
     ./noctalia.nix
+    ./webapps.nix
   ];
   # ***
 
