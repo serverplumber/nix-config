@@ -20,21 +20,40 @@ let
 
     mod + T                   terminal
     mod + Q                   close window
-    mod + C                   center window
+    mod + C                   center column
     mod + M                   maximize window
     mod + shift + E           exit session
     mod + E                   file manager
     mod + V                   toggle floating
     mod + D                   launcher
-    mod + P                   pseudotile (dwindle only)
-    mod + backslash           toggle split (dwindle only)
     mod + alt + backspace     lock + caffeine
 
     mod + backspace           lock (see modules/sdbackup.nix)
     mod + b                   lock + caffeine + SD backup (see modules/sdbackup.nix)
 
-    mod + arrows/hjkl         move focus
-    mod + alt + arrows/hjkl   move window
+    -- hjkl = focus, arrows = move · h/l = columns, j/k = window stack --
+    mod + h / l                   focus column left / right
+    mod + j / k                   focus window down / up in column
+    mod + left / right            move column left / right
+    mod + up / down               move window up / down in column
+
+    mod + alt + j / k             focus desktop down / up
+    mod + alt + down / up         move window to desktop down / up
+
+    mod + ctrl + h / l            column width -10% / +10%
+    mod + ctrl + k / j            window height +10% / -10%
+    mod + ctrl + left / right     consume-or-expel window prev / next
+    mod + ctrl + up / down        (niri only: focus first / last column)
+
+    mod + ctrl + alt + hjkl       focus monitor left/down/up/right
+    mod + ctrl + alt + arrows     move window to monitor
+
+    mod + backslash               promote window into its own column
+    mod + comma / period          consume / expel window from column
+    mod + R / shift + R           cycle column width presets
+    mod + F                       maximize column (fit to screen width)
+    mod + ctrl + F                expand column into free space
+
     mod + [0-9]               switch workspace
     mod + shift + [0-9]       move window to workspace
     mod + S                   toggle scratchpad
@@ -135,14 +154,29 @@ in
       })
 
       --------------------------------------------------------------- layout
-      -- Explicit even though dwindle is Hyprland's own built-in default
-      -- (confirmed in ${hyprPkgs.hyprland}/share/hypr/hyprland.lua) — it's
-      -- what the Mod+P (pseudotile) and Mod+backslash (togglesplit) binds
-      -- below assume, and what the vi-style focus/move binds are built for
-      -- (a plain 2D grid, not niri's scrolling columns).
+      -- "scrolling" is Hyprland's native PaperWM/niri-style layout (columns
+      -- on an infinitely growing tape, plugin-free since it landed alongside
+      -- the Lua config migration — confirmed present in this build via
+      -- ${hyprPkgs.hyprland}/share/hypr/stubs/hl.meta.lua's scrolling.*
+      -- config keys). Swapped in for dwindle's plain 2D grid so the
+      -- focus/move binds below can share niri's column-based mental model
+      -- instead of a second, different one. See
+      -- https://wiki.hypr.land/Configuring/Layouts/Scrolling-Layout/ for the
+      -- full hl.dsp.layout(msg) message reference the binds below draw on.
+      --
+      -- direction = "right": new columns open to the right and the tape
+      -- scrolls right to reveal them, matching niri's default column order.
+      -- fullscreen_on_one_column carried over from Hyprland's own shipped
+      -- example (hyprland.lua) for the same reason dwindle's
+      -- preserve_split was kept explicit here — it's the default, but
+      -- worth stating since behavior depends on it.
       hl.config({
         general = {
-          layout = "dwindle",
+          layout = "scrolling",
+        },
+        scrolling = {
+          direction = "right",
+          fullscreen_on_one_column = true,
         },
       })
 
@@ -169,22 +203,21 @@ in
       -- in niri) and Mod+M (exit session here vs. maximize window in niri).
       -- Muscle memory doesn't know which session it's in, so the keys below
       -- are now realigned to match niri's letter for the same action
-      -- wherever dwindle has a sane equivalent. File manager (Mod+E),
-      -- pseudotile (Mod+P), and scratchpad (Mod+S / Mod+Shift+S) are kept
-      -- as-is — niri has no launcher-adjacent/pseudotile/scratchpad binds
-      -- to collide with, so there was nothing to realign.
+      -- wherever the layout has a sane equivalent. File manager (Mod+E) and
+      -- scratchpad (Mod+S / Mod+Shift+S) are kept as-is — niri has no
+      -- launcher-adjacent/scratchpad binds to collide with, so there was
+      -- nothing to realign. Mod+P (pseudotile) is gone: that flag is a
+      -- dwindle-only concept — there is no "pseudo" state in a column
+      -- layout — so the bind was dropped rather than kept as dead weight.
       --
-      -- Mod+R (niri: switch-preset-column-width) and Mod+F (niri:
-      -- maximize-column) are deliberately left unbound here: dwindle is a
-      -- binary-tree layout with no "column" concept, so neither has a
-      -- non-fake equivalent. Mod+M (window.fullscreen(1), Hyprland's
-      -- "maximize" — fills the screen without going true-fullscreen)
-      -- already covers the "fill available space" case both of those
-      -- niri actions gesture at.
+      -- Mod+R/Mod+F used to be listed here as deliberately unbound — dwindle
+      -- had no "column" concept for either niri action to map onto. Now that
+      -- the layout below is scrolling, both have a real equivalent and are
+      -- bound further down alongside the rest of the column-axis binds.
       --
       -- Note there is no default screenshot bind and no default lock bind —
       -- Hyprland's example config doesn't set either (niri's does, via
-      -- Super+Alt+L / Print in home/niri.nix). Ask if you want them added.
+      -- Mod+Backspace / Mod+P in home/niri.nix). Ask if you want them added.
       local terminal = "${pkgs.foot}/bin/foot"
       local fileManager = "${pkgs.kdePackages.dolphin}/bin/dolphin"
       local menu = "${config.programs.noctalia.package}/bin/noctalia msg panel-toggle launcher"
@@ -194,13 +227,12 @@ in
 
       hl.bind(mod .. " + T", hl.dsp.exec_cmd(terminal))               -- niri: Mod+T
       hl.bind(mod .. " + Q", hl.dsp.window.close())                   -- niri: Mod+Q
-      hl.bind(mod .. " + C", hl.dsp.window.center())                  -- niri: Mod+C (center-column)
+      hl.bind(mod .. " + C", hl.dsp.layout("center"))                 -- niri: Mod+C (center-column)
       hl.bind(mod .. " + M", hl.dsp.window.fullscreen(1))             -- niri: Mod+M (maximize-window-to-edges)
       hl.bind(mod .. " + SHIFT + E", hl.dsp.exec_cmd(exitSession))    -- niri: Mod+Shift+E (quit)
       hl.bind(mod .. " + E", hl.dsp.exec_cmd(fileManager))            -- kept
       hl.bind(mod .. " + V", hl.dsp.window.float({ action = "toggle" })) -- already matches niri
       hl.bind(mod .. " + D", hl.dsp.exec_cmd(menu))                   -- niri: Mod+D
-      hl.bind(mod .. " + P", hl.dsp.window.pseudo())                  -- kept
 
       -- Mod+Alt+Backspace: lock + caffeine, mirroring home/niri.nix's own
       -- bind (untouched by modules/sdbackup.nix on either compositor — that
@@ -220,11 +252,10 @@ in
         "${config.programs.noctalia.package}/bin/noctalia msg session lock && " ..
         "${config.programs.noctalia.package}/bin/noctalia msg caffeine-enable"))
 
-      -- Wiki-default key for this is Mod+J, but J is taken below by the
-      -- vi-style focus-movement remap (mirrors home/niri.nix's own
-      -- deviation for the same reason — see CLAUDE.md's Keyboard section).
       -- Backslash is the physical key under Backspace on the Preonic.
-      hl.bind(mod .. " + backslash", hl.dsp.layout("togglesplit"))    -- dwindle only
+      -- Promotes the focused window into its own new column — the scrolling
+      -- layout has no "split" concept, so togglesplit's old key was free.
+      hl.bind(mod .. " + backslash", hl.dsp.layout("promote"))
 
       -- "slash" verified live via `hyprctl eval 'hl.bind("SUPER + SHIFT +
       -- slash", ...)'` — it's a valid Hyprland key name (xkbcommon keysym),
@@ -232,30 +263,126 @@ in
       hl.bind(mod .. " + SHIFT + slash", hl.dsp.exec_cmd(
         "${pkgs.foot}/bin/foot -e ${pkgs.less}/bin/less ${cheatsheet}"))
 
-      -- Move focus with mod + arrow keys, or mod + hjkl (vi-style — same
-      -- reasoning as home/niri.nix's hjkl remap, see CLAUDE.md's Keyboard
-      -- section). Unlike niri's scrolling-columns model, dwindle is a plain
-      -- 2D grid, so hjkl map straight to the cardinal directions here
-      -- (h/j/k/l = left/down/up/right) rather than niri's split
-      -- column-axis/workspace-axis scheme.
-      hl.bind(mod .. " + left",  hl.dsp.focus({ direction = "left" }))
-      hl.bind(mod .. " + right", hl.dsp.focus({ direction = "right" }))
-      hl.bind(mod .. " + up",    hl.dsp.focus({ direction = "up" }))
-      hl.bind(mod .. " + down",  hl.dsp.focus({ direction = "down" }))
-      hl.bind(mod .. " + h", hl.dsp.focus({ direction = "left" }))
-      hl.bind(mod .. " + l", hl.dsp.focus({ direction = "right" }))
-      hl.bind(mod .. " + k", hl.dsp.focus({ direction = "up" }))
-      hl.bind(mod .. " + j", hl.dsp.focus({ direction = "down" }))
+      ------------------------------------------------------ scrolling layout
+      -- One scheme, shared verbatim with home/niri.nix, built only from keys
+      -- that exist on the Preonic's base layer (CLAUDE.md "Keyboard"):
+      -- letters, digits, Esc/Shift/Ctrl/Alt/Super/Backspace and the arrows.
+      -- Brackets and -/= are NOT on that layer, which is why the old
+      -- Mod+bracketleft/bracketright consume-or-expel binds are gone (they
+      -- moved to Mod+Ctrl+Left/Right below). Two rules cover the whole grid:
+      --
+      --   hjkl = focus / primary        arrows = move
+      --   h/l  = horizontal (columns)   j/k    = vertical (window stack)
+      --
+      -- and the modifier picks the scope:
+      --
+      --   Mod            the current workspace's columns and windows
+      --   Mod+Alt        the desktop (workspace) axis
+      --   Mod+Ctrl       geometry: resize, plus consume/expel on the arrows
+      --   Mod+Ctrl+Alt   monitors
+      --
+      -- hl.dsp.layout("focus ..") is the layout-aware focus dispatcher: it
+      -- recenters the tape on the newly focused column and wraps at the ends
+      -- per scrolling.wrap_focus. Deliberately used instead of the generic
+      -- hl.dsp.focus(), which only does geometric nearest-neighbour and
+      -- would not scroll the tape to reach an off-screen column.
+      hl.bind(mod .. " + h", hl.dsp.layout("focus l"))
+      hl.bind(mod .. " + l", hl.dsp.layout("focus r"))
+      hl.bind(mod .. " + j", hl.dsp.layout("focus d"))
+      hl.bind(mod .. " + k", hl.dsp.layout("focus u"))
 
-      -- Move the focused window with mod + alt + arrow keys/hjkl.
-      hl.bind(mod .. " + ALT + left",  hl.dsp.window.move({ direction = "left" }))
-      hl.bind(mod .. " + ALT + right", hl.dsp.window.move({ direction = "right" }))
-      hl.bind(mod .. " + ALT + up",    hl.dsp.window.move({ direction = "up" }))
-      hl.bind(mod .. " + ALT + down",  hl.dsp.window.move({ direction = "down" }))
-      hl.bind(mod .. " + ALT + h", hl.dsp.window.move({ direction = "left" }))
-      hl.bind(mod .. " + ALT + l", hl.dsp.window.move({ direction = "right" }))
-      hl.bind(mod .. " + ALT + k", hl.dsp.window.move({ direction = "up" }))
-      hl.bind(mod .. " + ALT + j", hl.dsp.window.move({ direction = "down" }))
+      -- Arrows are the "move" half of the same axes. Left/Right reposition
+      -- the whole column on the tape (swapcol); Up/Down reorder the focused
+      -- window inside its column — hl.dsp.window.move() lands in
+      -- CScrollingAlgorithm::moveTargetTo, whose UP/DOWN branch calls
+      -- column->up()/down(). That is the layout's purpose-built in-column
+      -- reorder, not an approximation: there is simply no layoutMsg for it,
+      -- so the generic window dispatcher is the correct route.
+      hl.bind(mod .. " + left",  hl.dsp.layout("swapcol l"))
+      hl.bind(mod .. " + right", hl.dsp.layout("swapcol r"))
+      hl.bind(mod .. " + up",    hl.dsp.window.move({ direction = "up" }))
+      hl.bind(mod .. " + down",  hl.dsp.window.move({ direction = "down" }))
+
+      ------------------------------------------------------- desktop (Mod+Alt)
+      -- j/k focus the next/previous workspace, arrows carry the window with
+      -- you. "e+1"/"e-1" walk existing workspaces rather than numbered ones,
+      -- so this stays useful alongside the Mod+[0-9] absolute binds below.
+      -- Mod+Alt+H/L and Mod+Alt+Left/Right are deliberately unbound: the
+      -- desktop axis is vertical only, and monitors live on Mod+Ctrl+Alt.
+      hl.bind(mod .. " + ALT + j", hl.dsp.focus({ workspace = "e+1" }))
+      hl.bind(mod .. " + ALT + k", hl.dsp.focus({ workspace = "e-1" }))
+      hl.bind(mod .. " + ALT + down", hl.dsp.window.move({ workspace = "e+1" }))
+      hl.bind(mod .. " + ALT + up",   hl.dsp.window.move({ workspace = "e-1" }))
+
+      ------------------------------------------------ geometry (Mod+Ctrl)
+      -- hjkl resizes. Column width goes through the layout's own colresize,
+      -- whose argument is a FRACTION OF SCREEN WIDTH — 0.1 is therefore the
+      -- exact equivalent of niri's set-column-width "10%".
+      --
+      -- Window height has no layoutMsg, so it goes through the generic
+      -- resize dispatcher, which CScrollingAlgorithm::resizeTarget handles
+      -- on the y axis by redistributing height between adjacent windows in
+      -- the column. Two consequences worth knowing: it is PIXELS, not a
+      -- percentage, so exact parity with niri is not possible (120px ≈ 10%
+      -- of this machine's 1920x1200 logical display); and it needs at least
+      -- two windows in the column (resizeTarget guards on
+      -- targetDatas.size() > 1), so on a lone window it correctly no-ops.
+      hl.bind(mod .. " + CTRL + h", hl.dsp.layout("colresize -0.1"))
+      hl.bind(mod .. " + CTRL + l", hl.dsp.layout("colresize +0.1"))
+      hl.bind(mod .. " + CTRL + k", hl.dsp.window.resize({ x = 0, y = -120, relative = true }))
+      hl.bind(mod .. " + CTRL + j", hl.dsp.window.resize({ x = 0, y = 120, relative = true }))
+
+      -- The arrows at this level restructure columns instead of resizing:
+      -- consume pulls the adjacent column's window in, expel pushes the
+      -- focused one out, and consume_or_expel picks whichever applies for
+      -- the given side. This is where the old Mod+bracketleft/bracketright
+      -- went. Plain consume/expel keep comma/period further down — both are
+      -- base-layer keys, so they stay.
+      hl.bind(mod .. " + CTRL + left",  hl.dsp.layout("consume_or_expel prev"))
+      hl.bind(mod .. " + CTRL + right", hl.dsp.layout("consume_or_expel next"))
+
+      -- Mod+Ctrl+Up/Down is focus-column-first/last in home/niri.nix and is
+      -- deliberately UNBOUND here: the scrolling layout exposes no such
+      -- message. Its layoutMsg switch handles only move, colresize, fit,
+      -- focus, promote, consume, expel, consume_or_expel, swapcol, center,
+      -- inhibit_scroll and fit_into_view — none of which jumps to the first
+      -- or last column. Left unbound rather than faked with something that
+      -- would mean a different thing in each session.
+
+      ------------------------------------------- monitors (Mod+Ctrl+Alt)
+      -- Directional rather than next/previous so the binds are generic: the
+      -- monitor selector resolves l/r/u/d against the actual physical
+      -- arrangement (CMonitorQueryCore::fromConfigString) and simply no-ops
+      -- when nothing sits that way. This machine's displays are currently
+      -- stacked VERTICALLY (HDMI-A-1 above, eDP-1 below), so today k/j and
+      -- Up/Down are the live pair and h/l are inert — but plugging into a
+      -- side-by-side setup makes h/l work with no config change.
+      hl.bind(mod .. " + CTRL + ALT + h", hl.dsp.focus({ monitor = "l" }))
+      hl.bind(mod .. " + CTRL + ALT + l", hl.dsp.focus({ monitor = "r" }))
+      hl.bind(mod .. " + CTRL + ALT + j", hl.dsp.focus({ monitor = "d" }))
+      hl.bind(mod .. " + CTRL + ALT + k", hl.dsp.focus({ monitor = "u" }))
+      hl.bind(mod .. " + CTRL + ALT + left",  hl.dsp.window.move({ monitor = "l" }))
+      hl.bind(mod .. " + CTRL + ALT + right", hl.dsp.window.move({ monitor = "r" }))
+      hl.bind(mod .. " + CTRL + ALT + down",  hl.dsp.window.move({ monitor = "d" }))
+      hl.bind(mod .. " + CTRL + ALT + up",    hl.dsp.window.move({ monitor = "u" }))
+
+      ------------------------------------------------------------ column ops
+      -- Restructure columns: consume pulls the next column's front window
+      -- into the current column; expel kicks the current column's last
+      -- window out into its own column. Same keys as niri's
+      -- consume-window-into-column / expel-window-from-column.
+      hl.bind(mod .. " + comma",  hl.dsp.layout("consume"))
+      hl.bind(mod .. " + period", hl.dsp.layout("expel"))
+
+      -- Column width presets: R/Shift+R cycle scrolling.explicit_column_widths
+      -- forward/back (niri: switch-preset-column-width{,-back}). F fits the
+      -- focused column to the full screen width (niri: maximize-column);
+      -- Ctrl+F expands it into whatever free space is left without pushing
+      -- other columns off-screen (niri: expand-column-to-available-width).
+      hl.bind(mod .. " + R", hl.dsp.layout("colresize +conf"))
+      hl.bind(mod .. " + SHIFT + R", hl.dsp.layout("colresize -conf"))
+      hl.bind(mod .. " + F", hl.dsp.layout("fit active"))
+      hl.bind(mod .. " + CTRL + F", hl.dsp.layout("fit expand"))
 
       -- Switch workspaces with mod + [0-9]
       -- Move active window to a workspace with mod + SHIFT + [0-9]

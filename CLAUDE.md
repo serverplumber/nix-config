@@ -34,8 +34,10 @@ identically on and off NixOS.
   real disks). niri cannot render in the VM (no EGL); Hyprland and Plasma
   can be tested there.
 - `just iso` — build the live installer ISO carrying this flake.
-- `just switch` — `nixos-rebuild switch` on the real machine.
-- `just home-switch` — apply only the home-manager half.
+- `just switch` — `nixos-rebuild switch` on the real machine. This is the
+  only apply path: home-manager is imported as a NixOS module, not used
+  standalone, so there is no `home-manager` CLI on PATH and no home-only
+  apply. (`just home` still *builds* the home half on its own.)
 - `just have <attr>...` — check whether nixpkgs attribute names exist
   (`ok` / `MISSING` / `THROWS`) before wiring them into a module.
 - `just show` / `just lock` / `just update` — flake introspection/pin

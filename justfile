@@ -276,10 +276,6 @@ home:
 switch:
     sudo nixos-rebuild switch --flake {{project_root}}#{{host}}
 
-# Apply the home-manager half only
-home-switch:
-    home-manager switch --flake {{project_root}}#{{user}}
-
 # === Utilities ===============================================================
 
 # Show every output this flake exposes

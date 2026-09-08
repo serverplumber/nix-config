@@ -167,99 +167,144 @@
       # effect as a native KDL bind, just spawned instead of typed. This
       # opens niri's own interactive screenshot UI; no grim/slurp/swappy
       # needed.
-      "Print".action = spawn "niri" "msg" "action" "screenshot";
-      "Ctrl+Print".action = spawn "niri" "msg" "action" "screenshot-screen";
-      "Alt+Print".action = spawn "niri" "msg" "action" "screenshot-window";
+      # Print is NOT on the Preonic base layer — CLAUDE.md flags it as
+      # unconfirmed alongside Home/End/Page and Delete — so the family lives
+      # on Mod+P. Mod+Shift+P (power-off-monitors, further down) is a
+      # different chord and does not collide.
+      "Mod+P".action = spawn "niri" "msg" "action" "screenshot";
+      "Mod+Ctrl+P".action = spawn "niri" "msg" "action" "screenshot-screen";
+      "Mod+Alt+P".action = spawn "niri" "msg" "action" "screenshot-window";
 
       "Mod+Q" = {
         repeat = false;
         action = close-window;
       };
 
-      "Mod+Left".action = focus-column-left;
-      "Mod+Down".action = focus-window-down;
-      "Mod+Up".action = focus-window-up;
-      "Mod+Right".action = focus-column-right;
-
-      # First deliberate deviation from niri's defaults: vi-style nav for the
-      # Preonic (see CLAUDE.md's "Keyboard" section — hjkl and modifiers are
-      # the whole top layer, so this is the shape every future bind should
-      # aim for). H/L stay column-left/right, same as default. J/K move to
-      # niri's *workspace* axis instead of default's within-column window
-      # focus — the column layout only really has one window "down"/"up" at
-      # a time in the rare stacked case, whereas switching workspaces is
-      # constant. Shift+J/K moves the focused column along with you, same
-      # verb niri's own defaults use for Shift (move) vs plain (focus).
+      # ------------------------------------------------------ navigation
       #
-      # Bumped off Mod+J/K: focus-window-down/up (still on Mod+Down/Up).
-      # Bumped off Mod+Shift+J/K: focus-monitor-down/up (still on
-      # Mod+Shift+Down/Up) — arrows are top-layer too, so both stay one
-      # press away, just off hjkl now.
+      # One scheme, shared verbatim with home/hyprland.nix, built ONLY from
+      # keys that exist on the Preonic's base layer (CLAUDE.md "Keyboard"):
+      # letters, digits, Esc/Shift/Ctrl/Alt/Super/Backspace and the arrows.
+      # Brackets, Minus/Equal, Home/End, Page_Up/Down, Print and Delete are
+      # NOT on that layer — everything that used them has been moved onto
+      # reachable keys or dropped; the record is at the bottom of this block.
+      #
+      # Two rules cover the whole grid:
+      #
+      #   hjkl = focus / primary        arrows = move
+      #   h/l  = horizontal (columns)   j/k    = vertical (window stack)
+      #
+      # and the modifier picks the scope:
+      #
+      #   Mod            this workspace's columns and windows
+      #   Mod+Alt        the desktop (workspace) axis
+      #   Mod+Ctrl       geometry: resize, plus consume/expel on the arrows
+      #   Mod+Ctrl+Alt   monitors
+      #
+      # This replaces the previous vi-remap, which put J/K on the *workspace*
+      # axis. That was the right call while Hyprland was on dwindle and had
+      # no column concept to mirror; now that both sessions run a scrolling
+      # column layout, J/K mean within-column focus in both and the desktop
+      # axis has moved to Mod+Alt+J/K.
+
       "Mod+H".action = focus-column-left;
       "Mod+L".action = focus-column-right;
-      "Mod+J".action = focus-workspace-down;
-      "Mod+K".action = focus-workspace-up;
-      "Mod+Shift+J".action = move-column-to-workspace-down;
-      "Mod+Shift+K".action = move-column-to-workspace-up;
+      "Mod+J".action = focus-window-down;
+      "Mod+K".action = focus-window-up;
 
-      "Mod+Ctrl+Left".action = move-column-left;
-      "Mod+Ctrl+Down".action = move-window-down;
-      "Mod+Ctrl+Up".action = move-window-up;
-      "Mod+Ctrl+Right".action = move-column-right;
-      "Mod+Ctrl+H".action = move-column-left;
-      "Mod+Ctrl+J".action = move-window-down;
-      "Mod+Ctrl+K".action = move-window-up;
-      "Mod+Ctrl+L".action = move-column-right;
+      "Mod+Left".action = move-column-left;
+      "Mod+Right".action = move-column-right;
+      "Mod+Up".action = move-window-up;
+      "Mod+Down".action = move-window-down;
 
-      "Mod+Home".action = focus-column-first;
-      "Mod+End".action = focus-column-last;
-      "Mod+Ctrl+Home".action = move-column-to-first;
-      "Mod+Ctrl+End".action = move-column-to-last;
+      # Desktop axis. Mod+Alt+H/L and Mod+Alt+Left/Right are deliberately
+      # left unbound — the workspace axis is vertical only, and monitors
+      # moved to Mod+Ctrl+Alt below.
+      "Mod+Alt+J".action = focus-workspace-down;
+      "Mod+Alt+K".action = focus-workspace-up;
+      "Mod+Alt+Down".action = move-column-to-workspace-down;
+      "Mod+Alt+Up".action = move-column-to-workspace-up;
 
-      "Mod+Shift+Left".action = focus-monitor-left;
-      "Mod+Shift+Down".action = focus-monitor-down;
-      "Mod+Shift+Up".action = focus-monitor-up;
-      "Mod+Shift+Right".action = focus-monitor-right;
-      "Mod+Shift+H".action = focus-monitor-left;
-      "Mod+Shift+L".action = focus-monitor-right;
-      # Mod+Shift+J/K used to be focus-monitor-down/up here too — moved
-      # above to move-column-to-workspace-down/up as part of the vi-nav
-      # remap. Mod+Shift+Down/Up (arrow keys) still reach monitor focus.
+      # Geometry. hjkl resizes; the arrows restructure columns instead.
+      # Hyprland's equivalent of the width pair is layout("colresize ±0.1"),
+      # whose argument is a fraction of screen width — the same 10% step.
+      # Its height pair is pixels rather than a percentage, so that half is
+      # only approximately in step (see home/hyprland.nix).
+      "Mod+Ctrl+H".action = set-column-width "-10%";
+      "Mod+Ctrl+L".action = set-column-width "+10%";
+      "Mod+Ctrl+K".action = set-window-height "+10%";
+      "Mod+Ctrl+J".action = set-window-height "-10%";
 
-      "Mod+Shift+Ctrl+Left".action = move-column-to-monitor-left;
-      "Mod+Shift+Ctrl+Down".action = move-column-to-monitor-down;
-      "Mod+Shift+Ctrl+Up".action = move-column-to-monitor-up;
-      "Mod+Shift+Ctrl+Right".action = move-column-to-monitor-right;
-      "Mod+Shift+Ctrl+H".action = move-column-to-monitor-left;
-      "Mod+Shift+Ctrl+J".action = move-column-to-monitor-down;
-      "Mod+Shift+Ctrl+K".action = move-column-to-monitor-up;
-      "Mod+Shift+Ctrl+L".action = move-column-to-monitor-right;
+      "Mod+Ctrl+Left".action = consume-or-expel-window-left;
+      "Mod+Ctrl+Right".action = consume-or-expel-window-right;
 
-      # Moves the whole focused workspace to another monitor (distinct from
-      # move-column-to-monitor-* above, which only takes the one window).
-      "Mod+Alt+Left".action = move-workspace-to-monitor-left;
-      "Mod+Alt+Down".action = move-workspace-to-monitor-down;
-      "Mod+Alt+Up".action = move-workspace-to-monitor-up;
-      "Mod+Alt+Right".action = move-workspace-to-monitor-right;
-      "Mod+Alt+H".action = move-workspace-to-monitor-left;
-      "Mod+Alt+J".action = move-workspace-to-monitor-down;
-      "Mod+Alt+K".action = move-workspace-to-monitor-up;
-      "Mod+Alt+L".action = move-workspace-to-monitor-right;
+      # No Hyprland counterpart: its scrolling layout has no
+      # focus-column-first/last message, so these two are niri-only and
+      # Mod+Ctrl+Up/Down is left unbound there rather than faked.
+      "Mod+Ctrl+Up".action = focus-column-first;
+      "Mod+Ctrl+Down".action = focus-column-last;
 
-      "Mod+Page_Down".action = focus-workspace-down;
-      "Mod+Page_Up".action = focus-workspace-up;
+      # Monitors. Directional rather than next/previous so the binds are
+      # generic — niri resolves each against the real physical arrangement
+      # and a direction with no monitor in it simply does nothing. The
+      # displays are currently stacked VERTICALLY (see `outputs` above), so
+      # today K/J and Up/Down are the live pair and H/L are inert; a
+      # side-by-side setup would light H/L up with no config change.
+      "Mod+Ctrl+Alt+H".action = focus-monitor-left;
+      "Mod+Ctrl+Alt+L".action = focus-monitor-right;
+      "Mod+Ctrl+Alt+J".action = focus-monitor-down;
+      "Mod+Ctrl+Alt+K".action = focus-monitor-up;
+      "Mod+Ctrl+Alt+Left".action = move-column-to-monitor-left;
+      "Mod+Ctrl+Alt+Right".action = move-column-to-monitor-right;
+      "Mod+Ctrl+Alt+Down".action = move-column-to-monitor-down;
+      "Mod+Ctrl+Alt+Up".action = move-column-to-monitor-up;
+
+      # Letter aliases for the desktop axis, kept because U/I are base-layer
+      # and these were the reachable path before Mod+Alt+J/K existed.
       "Mod+U".action = focus-workspace-down;
       "Mod+I".action = focus-workspace-up;
-      "Mod+Ctrl+Page_Down".action = move-column-to-workspace-down;
-      "Mod+Ctrl+Page_Up".action = move-column-to-workspace-up;
       "Mod+Ctrl+U".action = move-column-to-workspace-down;
       "Mod+Ctrl+I".action = move-column-to-workspace-up;
-
-      "Mod+Shift+Page_Down".action = move-workspace-down;
-      "Mod+Shift+Page_Up".action = move-workspace-up;
       "Mod+Shift+U".action = move-workspace-down;
       "Mod+Shift+I".action = move-workspace-up;
 
+      # ---------------------------------------------- removed binds, and why
+      #
+      # Unreachable on the Preonic base layer — rehomed or dropped:
+      #
+      #   Mod+BracketLeft/Right   consume-or-expel-window-left/right
+      #                             -> Mod+Ctrl+Left/Right
+      #   Mod+Minus / Mod+Equal   set-column-width -/+10%
+      #                             -> Mod+Ctrl+H / Mod+Ctrl+L
+      #   Mod+Shift+Minus/Equal   set-window-height -/+10%
+      #                             -> Mod+Ctrl+J / Mod+Ctrl+K
+      #   Mod+Home / Mod+End      focus-column-first/last
+      #                             -> Mod+Ctrl+Up / Mod+Ctrl+Down
+      #   Mod+Ctrl+Home/End       move-column-to-first/last
+      #                             -> DROPPED, no replacement
+      #   Mod+Page_Down/Up        focus-workspace-down/up
+      #                             -> Mod+Alt+J/K (and Mod+U/I above)
+      #   Mod+Ctrl+Page_Down/Up   move-column-to-workspace-down/up
+      #                             -> Mod+Alt+Down/Up (and Mod+Ctrl+U/I)
+      #   Mod+Shift+Page_Down/Up  move-workspace-down/up
+      #                             -> Mod+Shift+U / Mod+Shift+I
+      #   Print / Ctrl+Print /    screenshot / -screen / -window
+      #     Alt+Print               -> Mod+P / Mod+Ctrl+P / Mod+Alt+P
+      #   Ctrl+Alt+Delete         quit
+      #                             -> DROPPED; Mod+Shift+E already quits
+      #
+      # Reachable, but reassigned by the scheme above:
+      #
+      #   Mod+Ctrl+{HJKL,arrows}  move-column-*/move-window-* -> Mod+arrows
+      #   Mod+Shift+{H,L,arrows}  focus-monitor-*  -> Mod+Ctrl+Alt+hjkl
+      #   Mod+Shift+Ctrl+*        move-column-to-monitor-*
+      #                             -> Mod+Ctrl+Alt+arrows
+      #   Mod+Shift+J/K           move-column-to-workspace-down/up
+      #                             -> Mod+Alt+Down/Up
+      #   Mod+Alt+{HJKL,arrows}   move-workspace-to-monitor-*
+      #                             -> DROPPED, no new home. Mod+Shift+H/L
+      #                                and Mod+Shift+arrows are now free if
+      #                                it ever needs one.
       "Mod+WheelScrollDown" = {
         cooldown-ms = 150;
         action = focus-workspace-down;
@@ -309,8 +354,6 @@
       "Mod+Ctrl+8".action = spawn "niri" "msg" "action" "move-column-to-workspace" "8";
       "Mod+Ctrl+9".action = spawn "niri" "msg" "action" "move-column-to-workspace" "9";
 
-      "Mod+BracketLeft".action = consume-or-expel-window-left;
-      "Mod+BracketRight".action = consume-or-expel-window-right;
       "Mod+Comma".action = consume-window-into-column;
       "Mod+Period".action = expel-window-from-column;
 
@@ -326,11 +369,6 @@
 
       "Mod+C".action = center-column;
       "Mod+Ctrl+C".action = center-visible-columns;
-
-      "Mod+Minus".action = set-column-width "-10%";
-      "Mod+Equal".action = set-column-width "+10%";
-      "Mod+Shift+Minus".action = set-window-height "-10%";
-      "Mod+Shift+Equal".action = set-window-height "+10%";
 
       "Mod+V".action = toggle-window-floating;
       "Mod+Shift+V".action = switch-focus-between-floating-and-tiling;
@@ -348,7 +386,6 @@
       };
 
       "Mod+Shift+E".action = quit;
-      "Ctrl+Alt+Delete".action = quit;
       "Mod+Shift+P".action = power-off-monitors;
 
       # Volume, backlight, media transport — allow-when-locked so they work
