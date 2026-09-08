@@ -14,6 +14,8 @@
 #
 # Epiphany is referenced by absolute store path and is deliberately NOT in
 # home.packages — we want the web apps, not a fourth browser in the launcher.
+# It goes through `epiphanyForApps` below rather than pkgs.epiphany directly;
+# see the WEBKIT_DISABLE_DMABUF_RENDERER note there.
 #
 # ***
 #
@@ -65,7 +67,46 @@ let
         sha256 = "12sy9l0bx4hxkgccpz88nprnnfc6mgkdmaq2x60p2lfqi32srwr4";
       };
     }
+    {
+      name = "Gmail";
+      url = "https://mail.google.com/";
+      icon = pkgs.fetchurl {
+        # Pinned to a commit, not to `main`, so the hash cannot break under us.
+        url = "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/51cb393299f8c404e3792e01244746d253a1e480/png/gmail.png";
+        sha256 = "1l8rdv3k21lmmrkn8szw10s4cfd9wzpjhj03f7bzhpzpqb0ph680";
+      };
+    }
   ];
+
+  # WebKit's DMA-BUF renderer is broken against this machine's NVIDIA driver
+  # (modules/nvidia.nix — RTX 4070 Laptop, open kernel modules, PRIME offload):
+  # in application mode the web view never paints, leaving a blank window with
+  # working chrome. Measured 2026-09-08 on epiphany 50.4 / webkitgtk 2.52.5 /
+  # nvidia 595.84 by screenshotting the window in each configuration:
+  #
+  #   normal mode,  local page or mail.proton.me   renders
+  #   app mode,     same page, same binary         blank
+  #   app mode,     + WEBKIT_DISABLE_DMABUF_RENDERER=1   renders
+  #
+  # So this is neither "Epiphany is broken" nor site-specific — the page loads,
+  # runs JS and sets the window title either way; only the paint is lost, and
+  # only in application mode. The variable falls back to the SHM buffer path,
+  # which costs some compositing throughput (worst case video) and nothing that
+  # matters for a mail window.
+  #
+  # --set-default, not --set, so it can still be overridden from the outside
+  # when re-testing whether a later driver/webkit pair has fixed this: run one
+  # of these desktop entries with WEBKIT_DISABLE_DMABUF_RENDERER=0 and see
+  # whether the window still paints. If it does, this wrapper can go away.
+  epiphanyForApps = pkgs.symlinkJoin {
+    name = "epiphany-webapps";
+    paths = [ pkgs.epiphany ];
+    nativeBuildInputs = [ pkgs.makeWrapper ];
+    postBuild = ''
+      wrapProgram $out/bin/epiphany \
+        --set-default WEBKIT_DISABLE_DMABUF_RENDERER 1
+    '';
+  };
 
   appId = name: "org.gnome.Epiphany.WebApp_${builtins.hashString "sha1" name}";
 
@@ -81,7 +122,7 @@ let
       item = pkgs.makeDesktopItem {
         name = id; # the basename must equal the GApplication id
         desktopName = name; # the SHA-1 input; see the header
-        exec = "${pkgs.epiphany}/bin/epiphany --application-mode=${id}.desktop ${url}";
+        exec = "${epiphanyForApps}/bin/epiphany --application-mode=${id}.desktop ${url}";
         icon = "${icon}";
         categories = [ "Network" ];
         startupWMClass = id; # so niri/hyprland rules can address one web app
