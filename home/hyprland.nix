@@ -15,55 +15,65 @@ let
   # shell one-liner for a list this short. Keep it in sync by hand when
   # binds change below — same convention as the sdbackup.nix warning further
   # down this file.
+  #
+  # Keys are written as symbols (◆ super, ⇧ shift, ⌃ ctrl, ⌥ alt, ⌫
+  # backspace, ←↓↑→ arrows) with a legend on the first line, so a chord is
+  # one glyph per key and the whole sheet fits without wrapping. Letters are
+  # lowercase unless ⇧ is in the chord, so the case shown is the case typed.
+  # The column padding assumes those glyphs render single-width; if foot's
+  # font draws them wide the descriptions will step right, which is ugly but
+  # readable.
   cheatsheet = pkgs.writeText "hyprland-cheatsheet.txt" ''
     Hyprland — Important Hotkeys
 
-    mod + T                   terminal
-    mod + Q                   close window
-    mod + C                   center column
-    mod + M                   maximize window
-    mod + shift + E           exit session
-    mod + E                   file manager
-    mod + V                   toggle floating
-    mod + D                   launcher
-    mod + alt + backspace     lock + caffeine
+    ◆ super   ⇧ shift   ⌃ ctrl   ⌥ alt   ⌫ backspace
 
-    mod + backspace           lock (see modules/sdbackup.nix)
-    mod + b                   lock + caffeine + SD backup (see modules/sdbackup.nix)
+    ◆t                    terminal
+    ◆q                    close window
+    ◆c                    center column
+    ◆m                    maximize window
+    ◆⇧E                   exit session
+    ◆e                    file manager
+    ◆v                    toggle floating
+    ◆d                    launcher
+    ◆⌥⌫                   lock + caffeine
+
+    ◆⌫                    lock (see modules/sdbackup.nix)
+    ◆b                    lock + caffeine + SD backup (see modules/sdbackup.nix)
 
     -- hjkl = focus, arrows = move · h/l = columns, j/k = window stack --
-    mod + h / l                   focus column left / right
-    mod + j / k                   focus window down / up in column
-    mod + left / right            move column left / right
-    mod + up / down               move window up / down in column
+    ◆h / ◆l               focus column left / right
+    ◆j / ◆k               focus window down / up in column
+    ◆← / ◆→               move column left / right
+    ◆↑ / ◆↓               move window up / down in column
 
-    mod + alt + j / k             focus desktop down / up
-    mod + alt + down / up         move window to desktop down / up
+    ◆⌥j / ◆⌥k             focus desktop down / up
+    ◆⌥↓ / ◆⌥↑             move window to desktop down / up
 
-    mod + ctrl + h / l            column width -10% / +10%
-    mod + ctrl + k / j            window height +10% / -10%
-    mod + ctrl + left / right     consume-or-expel window prev / next
-    mod + ctrl + up / down        (niri only: focus first / last column)
+    ◆⌃h / ◆⌃l             column width -10% / +10%
+    ◆⌃k / ◆⌃j             window height +10% / -10%
+    ◆⌃← / ◆⌃→             consume-or-expel window prev / next
+    ◆⌃↑ / ◆⌃↓             (niri only: focus first / last column)
 
-    mod + ctrl + alt + hjkl       focus monitor left/down/up/right
-    mod + ctrl + alt + arrows     move window to monitor
+    ◆⌃⌥ + hjkl            focus monitor left/down/up/right
+    ◆⌃⌥ + ←↓↑→            move window to monitor
 
-    mod + backslash               promote window into its own column
-    mod + comma / period          consume / expel window from column
-    mod + R / shift + R           cycle column width presets
-    mod + F                       maximize column (fit to screen width)
-    mod + ctrl + F                expand column into free space
+    ◆\                    promote window into its own column
+    ◆, / ◆.               consume / expel window from column
+    ◆r / ◆⇧R              cycle column width presets
+    ◆f                    maximize column (fit to screen width)
+    ◆⌃f                   expand column into free space
 
-    mod + [0-9]               switch workspace
-    mod + shift + [0-9]       move window to workspace
-    mod + S                   toggle scratchpad
-    mod + shift + S           move window to scratchpad
-    mod + scroll              cycle workspaces
+    ◆0-9                  switch workspace
+    ◆⇧0-9                 move window to workspace
+    ◆s                    toggle scratchpad
+    ◆⇧S                   move window to scratchpad
+    ◆ scroll              cycle workspaces
 
-    mod + LMB drag            move window
-    mod + RMB drag            resize window
+    ◆ LMB drag            move window
+    ◆ RMB drag            resize window
 
-    mod + shift + /           this cheat sheet
+    ◆⇧/                   this cheat sheet
   '';
 in
 {
