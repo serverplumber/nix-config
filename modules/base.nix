@@ -35,6 +35,7 @@
     # Nix-level introspection. Useful precisely when evaluation is failing
     # and the flake's devShell is therefore not reachable.
     nix-tree
+    nvd # diff two store paths/closures to see package version changes
   ];
 
   # ***
