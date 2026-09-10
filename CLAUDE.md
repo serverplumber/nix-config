@@ -34,10 +34,18 @@ identically on and off NixOS.
   real disks). niri cannot render in the VM (no EGL); Hyprland and Plasma
   can be tested there.
 - `just iso` — build the live installer ISO carrying this flake.
-- `just switch` — `nixos-rebuild switch` on the real machine. This is the
-  only apply path: home-manager is imported as a NixOS module, not used
+- `just switch` — `nixos-rebuild switch` on the real machine. Applies to
+  the whole system: home-manager is imported as a NixOS module, not used
   standalone, so there is no `home-manager` CLI on PATH and no home-only
   apply. (`just home` still *builds* the home half on its own.)
+- `just boot` — `nixos-rebuild boot`: stage for the next boot and touch
+  nothing running. The **required** verb when the kernel or the nvidia
+  driver moves; see "Updating" below.
+- `just diff` — build the closure and `nvd diff` it against the running
+  system, then say whether to `switch` or `boot`. Runs automatically
+  after `just update`.
+- `just needs-reboot` — is the running system still `/run/current-system`?
+  Exits 1 when an earlier `switch` left a reboot owed.
 - `just have <attr>...` — check whether nixpkgs attribute names exist
   (`ok` / `MISSING` / `THROWS`) before wiring them into a module.
 - `just show` / `just lock` / `just update` — flake introspection/pin
@@ -46,6 +54,30 @@ identically on and off NixOS.
 No test suite; correctness is `just verify` / `just check` / `just build`
 succeeding, plus (for anything touching the desktop) actually booting
 `just vm` or applying to the real machine.
+
+### Updating
+
+`just update` → read what `just diff` prints → `just switch` **or**
+`just boot` + reboot. Never reflexively `switch` after an update.
+
+`switch` is wrong whenever `kernel`, `kernel-modules` or `initrd` moved,
+and `just diff` exists to catch exactly that. Activation repoints
+`/run/opengl-driver` at the new userspace nvidia driver while the old
+kernel module stays loaded — it *cannot* be unloaded, `nvidia_drm` is
+pinned by the running compositor. The result is `Driver/library version
+mismatch`: `nvidia-smi` dies, and
+`nvidia-container-toolkit-cdi-generator.service` (see `modules/nvidia.nix`)
+fails and wipes `/var/run/cdi` via `RuntimeDirectory=`, so rootless GPU
+containers break too. `nixos-rebuild` prints no warning about any of this
+and exits non-zero, so the switch looks simply broken.
+
+Note that `kernel-modules` is the signal that matters: the nvidia module
+is built into that closure, so a driver-only bump changes it even when the
+kernel itself is unchanged.
+
+`just boot` avoids the whole window by never repointing
+`/run/current-system` — the same staging model as the ostree deployments
+this machine migrated from.
 
 ## Architecture
 
