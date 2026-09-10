@@ -114,6 +114,21 @@
       natural-scroll = true;
     };
 
+    # Terminals open at 1/3 width instead of niri's 50% preset: the plain
+    # foot terminal (Mod+T) and the foot instance gui.nix's Helix.desktop
+    # spawns with --app-id=helix for editing in a terminal.
+    window-rules = [
+      {
+        matches = [
+          { app-id = "^foot$"; }
+          { app-id = "^helix$"; }
+        ];
+        default-column-width = {
+          proportion = 1.0 / 3.0;
+        };
+      }
+    ];
+
     # Absolute store paths throughout: a compositor does not reliably inherit
     # the home-manager profile's PATH, and a bare name that fails to resolve
     # produces no error — the key simply does nothing. Same reason noctalia is

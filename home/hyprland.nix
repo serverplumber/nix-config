@@ -190,6 +190,17 @@ in
         },
       })
 
+      -- Terminals open at 1/3 width instead of the layout's default column
+      -- width: the plain foot terminal (Mod+T) and the foot instance
+      -- gui.nix's Helix.desktop spawns with --app-id=helix for editing in a
+      -- terminal. `class` matches a Wayland client's app-id here, same as
+      -- niri's window-rules. `scrolling_width` is this layout's per-window
+      -- override for column width (0-1 = proportion of the tape),
+      -- confirmed via src/config/lua/bindings/LuaBindingsInternal.hpp in
+      -- the hyprland source — undocumented on the wiki's Lua-config page.
+      hl.window_rule({ name = "foot-width", match = { class = "^foot$" }, scrolling_width = 1 / 3 })
+      hl.window_rule({ name = "helix-width", match = { class = "^helix$" }, scrolling_width = 1 / 3 })
+
       ---------------------------------------------------------------- startup
       -- noctalia is started by the compositor, not by a systemd user unit;
       -- upstream deprecated the systemd approach. Do not also add a unit.
