@@ -136,6 +136,38 @@ in
       ---------------------------------------------------------------- input
       hl.config({
         input = {
+          -- Off, against Hyprland's default of on, to work around
+          -- noctalia-dev/noctalia#4360: the launcher (Mod+D) does not get the
+          -- keyboard when it opens while the pointer sits over a window. Type
+          -- and the characters go to the window behind it; even Escape won't
+          -- close it, until you move the pointer onto the panel by hand.
+          --
+          -- noctalia's fault, not Hyprland's. It creates the panel's layer
+          -- surface asking for keyboard_interactivity *exclusive*, then
+          -- relaxes it to *on_demand* 100ms later (visible in the issue's
+          -- WAYLAND_DEBUG trace). Once it is on_demand, Hyprland's pointer
+          -- path takes it straight back: CLayerSurface::onMap() calls
+          -- simulateMouseMovement(), which lands in mouseMoveUnified() with
+          -- refocus = false, finds the window under the never-moved cursor,
+          -- and — because mouse_refocus is on and the surface is no longer
+          -- exclusive — refocuses that window.
+          --
+          -- It looks intermittent because opening the launcher with the
+          -- pointer over bare wallpaper finds no window to hand focus back
+          -- to, and works fine.
+          --
+          -- With this off, hovering still focuses windows as before — it just
+          -- stops re-asserting focus on the window the cursor is *already*
+          -- inside, which is the re-assert that steals it. niri needs no
+          -- equivalent; it focuses on-demand layer surfaces without involving
+          -- the pointer at all.
+          --
+          -- Fixed upstream in noctalia 0565d25c1 ("fix(panel): rearm focus
+          -- grab after keyboard relaxation"), which landed two commits *after*
+          -- the v5.1.0 tag and so is in no release yet — the flake tracks
+          -- main, so a `just update` past that commit picks it up. Delete this
+          -- once that is in and the launcher still takes keys.
+          mouse_refocus = false,
           touchpad = {
             natural_scroll = true,
             tap_to_click   = true,
