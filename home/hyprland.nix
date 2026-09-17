@@ -176,30 +176,72 @@ in
       --
       -- direction = "right": new columns open to the right and the tape
       -- scrolls right to reveal them, matching niri's default column order.
-      -- fullscreen_on_one_column carried over from Hyprland's own shipped
-      -- example (hyprland.lua) for the same reason dwindle's
-      -- preserve_split was kept explicit here — it's the default, but
-      -- worth stating since behavior depends on it.
+      -- fullscreen_on_one_column = false, against both the default and
+      -- Hyprland's own shipped example (hyprland.lua), which enable it.
+      -- With it on, a workspace holding a single column stretches that
+      -- column to the full screen width and ignores its configured width
+      -- entirely — so the 1/3 window rules below appeared to work only
+      -- once a second window existed, and a lone terminal came up
+      -- full-screen. niri has no equivalent behavior, so turning it off is
+      -- also what keeps the two sessions looking the same.
       hl.config({
         general = {
           layout = "scrolling",
         },
         scrolling = {
           direction = "right",
-          fullscreen_on_one_column = true,
+          fullscreen_on_one_column = false,
         },
       })
 
-      -- Terminals open at 1/3 width instead of the layout's default column
-      -- width: the plain foot terminal (Mod+T) and the foot instance
-      -- gui.nix's Helix.desktop spawns with --app-id=helix for editing in a
-      -- terminal. `class` matches a Wayland client's app-id here, same as
-      -- niri's window-rules. `scrolling_width` is this layout's per-window
-      -- override for column width (0-1 = proportion of the tape),
-      -- confirmed via src/config/lua/bindings/LuaBindingsInternal.hpp in
-      -- the hyprland source — undocumented on the wiki's Lua-config page.
-      hl.window_rule({ name = "foot-width", match = { class = "^foot$" }, scrolling_width = 1 / 3 })
-      hl.window_rule({ name = "helix-width", match = { class = "^helix$" }, scrolling_width = 1 / 3 })
+      -- Per-app column widths, instead of every window landing on the
+      -- layout's default 0.5. `class` matches a Wayland client's app-id
+      -- here, same as niri's window-rules. `scrolling_width` is this
+      -- layout's per-window override for column width (0-1 = proportion of
+      -- the tape), confirmed via
+      -- src/config/lua/bindings/LuaBindingsInternal.hpp in the hyprland
+      -- source — undocumented on the wiki's Lua-config page. It is also the
+      -- *only* per-window scrolling key the compositor knows (checked
+      -- against the binary's string table), which is why the one-column
+      -- override above had to be turned off globally rather than per app.
+      --
+      -- Three tiers: 1/3 for terminals, 2/3 for anything you read and edit
+      -- in, full width for the media apps that are the only thing on screen
+      -- while they're up.
+      --
+      -- app-ids were taken from `hyprctl clients` where the app was running
+      -- (foot, brave-browser, jetbrains-goland, sidra) and otherwise from
+      -- the StartupWMClass of its own .desktop file. Two are neither, and
+      -- are the ones to re-check if a rule looks like it isn't firing:
+      -- stremio ships no StartupWMClass at all (and runs under nixpak,
+      -- which need not preserve it), and vlc's is likewise absent, so both
+      -- patterns below are informed guesses.
+      local width = function(name, class, w)
+        hl.window_rule({ name = name, match = { class = class }, scrolling_width = w })
+      end
+
+      -- 1/3 — terminals. The plain foot terminal (Mod+T) and the foot
+      -- instance gui.nix's Helix.desktop spawns with --app-id=helix for
+      -- editing in a terminal.
+      width("foot-width", "^foot$", 1 / 3)
+      width("helix-width", "^helix$", 1 / 3)
+
+      -- 2/3 — browsers and IDEs. All three JetBrains IDEs (home/dev.nix
+      -- installs idea/goland/pycharm) match one pattern; their desktop
+      -- files declare jetbrains-idea, jetbrains-goland and
+      -- jetbrains-pycharm. Epiphany web apps (home/webapps.nix) are
+      -- deliberately not included — they're single-purpose windows, not a
+      -- browser you sit in.
+      width("brave-width", "^brave-browser$", 2 / 3)
+      width("firefox-width", "^firefox$", 2 / 3)
+      width("jetbrains-width", "^jetbrains-.*$", 2 / 3)
+
+      -- Full width — media. sidra is the Apple Music client (gui.nix, from
+      -- its own flake); stremio is the sandboxed streaming client.
+      width("sidra-width", "^[sS]idra$", 1.0)
+      width("stremio-width", "^(com\\.stremio\\.Stremio|[sS]tremio.*)$", 1.0)
+      width("vlc-width", "^vlc$", 1.0)
+      width("mpv-width", "^u?mpv$", 1.0)
 
       ---------------------------------------------------------------- startup
       -- noctalia is started by the compositor, not by a systemd user unit;
