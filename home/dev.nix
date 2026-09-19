@@ -93,6 +93,14 @@ in
     gh
     glab
 
+    # GitHub's own MCP server. A stdio server a client spawns on demand, not
+    # a daemon — so it wants to be a binary on PATH like gh, with the client
+    # (Claude Code, the JetBrains IDEs below) pointing its server config at
+    # `github-mcp-server stdio`. Needs GITHUB_PERSONAL_ACCESS_TOKEN in that
+    # client's env; nothing here supplies one, deliberately — no secrets in
+    # this repo.
+    github-mcp-server
+
     ### linters / formatters — language-specific but small and always wanted
     shellcheck
     ruff
