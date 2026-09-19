@@ -125,21 +125,27 @@ in
       model = "opus";
       agentPushNotifEnabled = true;
 
-      # Pre-approved tool calls. Everything listed is read-only, or cheap
-      # and trivially reversible; the rule is that nothing here can change
-      # the running system, publish anything, or lose work.
+      # Pre-approved tool calls. The rule is that nothing here loses work
+      # with no way back: reads and searches, builds that touch nothing,
+      # and the apply/commit verbs, which are routine and are undone by a
+      # previous generation or a previous commit.
       #
       # `Bash(cmd:*)` is a prefix match — `Bash(git log:*)` covers
       # `git log --oneline -5` but not `git push`. Verified against this
       # Claude Code build that the prefix form matches and that an empty
       # allow list blocks, so these entries are doing real work.
       #
-      # Deliberately absent, so they keep prompting: `just switch`,
-      # `just boot`, `just update`, `nixos-rebuild`, `git commit`,
-      # `git push`, `git reset`, `git checkout`, and every MCP write tool.
+      # Deliberately absent, so they keep prompting: `git reset`,
+      # `git clean`, `git rebase`, bare `nixos-rebuild` (the `just` recipes
+      # are the supported path and pick switch vs boot correctly), and
+      # every MCP write tool.
       permissions.allow = [
-        # This repo's pre-flight and build recipes. `switch`/`boot`/`update`
-        # are the state-changing verbs and are not here.
+        # This repo's recipes, including the apply verbs: never asking
+        # before switch/boot/update is a standing instruction (see
+        # ./claude-code.md), and NixOS generations make each reversible.
+        "Bash(just switch)"
+        "Bash(just boot)"
+        "Bash(just update)"
         "Bash(just verify)"
         "Bash(just check)"
         "Bash(just fmt)"
@@ -151,8 +157,13 @@ in
         "Bash(just have:*)"
         "Bash(just --list)"
 
-        # Read-only git. `git add` is included because staging is
-        # reversible and never loses work; committing is not.
+        # Git. commit/push/checkout are here on the same standing
+        # instruction as the apply verbs above. `git reset`, `git clean`
+        # and `git rebase` are not: those are the ones that can destroy
+        # uncommitted work with no commit to return to.
+        "Bash(git commit:*)"
+        "Bash(git push:*)"
+        "Bash(git checkout:*)"
         "Bash(git status:*)"
         "Bash(git diff:*)"
         "Bash(git log:*)"

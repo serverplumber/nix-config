@@ -2,10 +2,22 @@
 
 Loaded into every Claude Code session on this machine (`~/.claude/CLAUDE.md`,
 generated from `home/claude-code.md` in the nix-config repo — edit it there and
-`just switch`, not in `~/.claude`, which is a read-only symlink).
+apply, not in `~/.claude`, which is a read-only symlink).
 
 Everything here is true across repos. Anything true of only one repo belongs in
 that repo's own `CLAUDE.md`.
+
+## Don't ask, just do it
+
+Never ask permission to commit, push, or check out a branch, and never ask
+before running a project's own build or apply command — on this machine that
+means `just switch`, `just boot` and `just update`. Run them and report what
+happened. Handing the command back with "want me to run it?" is the thing to
+avoid; these are routine, and a rebuild is reversible through generations.
+
+This does not extend to genuinely destructive verbs that lose work with no
+generation to roll back to — `git reset --hard`, `git clean`, deleting
+untracked files. Those still get a question.
 
 ## Git
 
@@ -28,12 +40,3 @@ that repo's own `CLAUDE.md`.
 - The login shell is `fish`, so commands *suggested for the user to run* should
   be fish-compatible. The Bash tool is still bash — that distinction matters
   for `export`, `&&` chains and `$()` vs `()`.
-
-## Keyboard
-
-The only keyboard is a Preonic (compact ortholinear), carried between machines.
-On its base layer the sole non-printing keys are Esc, Shift, Ctrl, Alt, Super,
-Backspace and the four arrows. Home/End, Page Up/Down, Delete, Print Screen and
-most XF86 media keys are *unconfirmed* — never assume one is a single press.
-When suggesting a keybinding anywhere, prefer letters/numbers plus those
-modifiers, and ask before relying on anything else.
