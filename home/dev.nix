@@ -111,6 +111,7 @@ in
     just
 
     ### data wrangling
+    jq
     yq-go # NB: nixpkgs `yq` is the python jq wrapper; this is mikefarah's Go one
 
     ### per-project python lives in devShells; uv is the tool that manages it,
