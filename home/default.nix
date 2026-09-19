@@ -6,6 +6,7 @@
 {
   imports = [
     ./cli.nix
+    ./claude-code.nix
     ./dev.nix
     ./gui.nix
     ./niri.nix

@@ -78,7 +78,8 @@ in
     [
       vim
       glow
-      claude-code
+      # claude-code is installed by programs.claude-code in ./claude-code.nix,
+      # which owns its MCP config too — see the comment there.
       ant-cli
 
       ### search / navigate
