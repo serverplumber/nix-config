@@ -125,27 +125,39 @@ in
       model = "opus";
       agentPushNotifEnabled = true;
 
-      # Pre-approved tool calls. The rule is that nothing here loses work
-      # with no way back: reads and searches, builds that touch nothing,
-      # and the apply/commit verbs, which are routine and are undone by a
-      # previous generation or a previous commit.
+      # Three tiers here, and the distinction matters:
+      #
+      #   deny  — never run, no prompt. Applying config, writing history.
+      #   allow — run silently. Reads, searches, builds that touch nothing.
+      #   absent — prompt. Everything else, including `git reset`,
+      #            `git clean`, `git rebase` and every MCP write tool.
       #
       # `Bash(cmd:*)` is a prefix match — `Bash(git log:*)` covers
       # `git log --oneline -5` but not `git push`. Verified against this
       # Claude Code build that the prefix form matches and that an empty
       # allow list blocks, so these entries are doing real work.
+      # Never run, and never prompt to run: applying a configuration and
+      # writing history are the user's own verbs. `deny` rather than simply
+      # leaving them off `allow`, because an absent rule still produces a
+      # permission prompt, and being asked is the half of this that was
+      # objected to. See ./claude-code.md.
       #
-      # Deliberately absent, so they keep prompting: `git reset`,
-      # `git clean`, `git rebase`, bare `nixos-rebuild` (the `just` recipes
-      # are the supported path and pick switch vs boot correctly), and
-      # every MCP write tool.
-      permissions.allow = [
-        # This repo's recipes, including the apply verbs: never asking
-        # before switch/boot/update is a standing instruction (see
-        # ./claude-code.md), and NixOS generations make each reversible.
+      # The effect is a hard block, not a default — if one of these ever
+      # should be delegated, it gets removed from here deliberately rather
+      # than waved through at a prompt.
+      permissions.deny = [
         "Bash(just switch)"
         "Bash(just boot)"
         "Bash(just update)"
+        "Bash(nixos-rebuild:*)"
+        "Bash(git commit:*)"
+        "Bash(git push:*)"
+        "Bash(git checkout:*)"
+      ];
+
+      permissions.allow = [
+        # This repo's read-only and build recipes. The apply verbs
+        # (switch/boot/update) are in `deny` above, not merely absent.
         "Bash(just verify)"
         "Bash(just check)"
         "Bash(just fmt)"
@@ -157,13 +169,10 @@ in
         "Bash(just have:*)"
         "Bash(just --list)"
 
-        # Git. commit/push/checkout are here on the same standing
-        # instruction as the apply verbs above. `git reset`, `git clean`
-        # and `git rebase` are not: those are the ones that can destroy
-        # uncommitted work with no commit to return to.
-        "Bash(git commit:*)"
-        "Bash(git push:*)"
-        "Bash(git checkout:*)"
+        # Read-only git, plus `git add` — staging is reversible and never
+        # loses work. commit/push/checkout are denied above; `git reset`,
+        # `git clean` and `git rebase` are absent and so keep prompting,
+        # since those can destroy uncommitted work outright.
         "Bash(git status:*)"
         "Bash(git diff:*)"
         "Bash(git log:*)"

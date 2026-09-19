@@ -7,23 +7,26 @@ apply, not in `~/.claude`, which is a read-only symlink).
 Everything here is true across repos. Anything true of only one repo belongs in
 that repo's own `CLAUDE.md`.
 
-## Don't ask, just do it
+## Commands that are not yours to run
 
-Never ask permission to commit, push, or check out a branch, and never ask
-before running a project's own build or apply command — on this machine that
-means `just switch`, `just boot` and `just update`. Run them and report what
-happened. Handing the command back with "want me to run it?" is the thing to
-avoid; these are routine, and a rebuild is reversible through generations.
+`just switch`, `just boot`, `just update`, `nixos-rebuild`, and `git commit`,
+`git push`, `git checkout`. Don't run them, and don't ask to run them — no
+"want me to switch?", no "shall I commit this?", no permission prompt. They are
+run by hand, deliberately, and the decision of when is not a step in your task.
 
-This does not extend to genuinely destructive verbs that lose work with no
-generation to roll back to — `git reset --hard`, `git clean`, deleting
-untracked files. Those still get a question.
+Finish the work, leave it in the working tree, say what you changed and what
+verification you did. Stop there. Mentioning that a rebuild is what would apply
+it is fine as a statement of fact; turning it into a question or an offer is
+not.
+
+This is a hard stop, not a default to weigh against convenience: those commands
+are in `permissions.deny`, so they fail rather than prompt.
 
 ## Git
 
 - Commit straight to `main`. These are personal repos with no reviewers; a
-  feature branch and a PR are pure overhead. Don't create branches, and don't
-  ask whether to.
+  feature branch and a PR are pure overhead — so when a commit *is* explicitly
+  asked for, don't create a branch first, and don't ask whether to.
 - Commit messages: imperative subject line, then a body that explains *why* —
   what the alternatives were and why they lost, what constraint forced the
   shape. The diff already says what changed.
