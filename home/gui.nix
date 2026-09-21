@@ -155,8 +155,41 @@ let
       # Annotations, bookmarks and last-read position live in docdata — bind
       # rw or none of it survives a restart.
       (sloth.concat' sloth.homeDir "/.local/share/okular")
-      (sloth.concat' sloth.homeDir "/.config/okularrc")
-      (sloth.concat' sloth.homeDir "/.config/okularpartrc")
+
+      # ⚠️ The ONE remapped bind in this file: host ~/.config/okular is
+      # mounted as ~/.config *inside* the sandbox, so what Okular writes to
+      # ~/.config/okularrc lands in ~/.config/okular/okularrc on the host.
+      # Every other entry here binds a path to itself; this one does not.
+      #
+      # nixpak's bind lists take `[ source dest ]` pairs as well as plain
+      # paths (bubblewrap.nix's bindType is `oneOf [ (pairOf sloth.type)
+      # sloth.type ]`), which launch.nix turns into `--bind-try src dest`.
+      #
+      # The obvious alternative — binding ~/.config/okularrc and
+      # ~/.config/okularpartrc directly, which is what this did until
+      # 2026-09-21 — is wrong twice over:
+      #
+      #   - Those are FILES, so each bind is a mount point, and KConfig
+      #     saves through QSaveFile: write a temp file, rename over the
+      #     target. rename(2) onto a mount point fails with EBUSY. KConfig
+      #     sets QSaveFile's direct-write fallback so it may recover by
+      #     writing in place, but that is relying on a fallback rather than
+      #     on the save path working. Binding the directory instead makes
+      #     temp and target siblings in one real directory and the rename an
+      #     ordinary rename.
+      #   - It requires enumerating every file Okular writes. kdeglobals,
+      #     okular.categoriesrc and anything a future version reaches for
+      #     were all silently landing in the per-launch tmpfs. A directory
+      #     catches the whole config namespace without maintenance.
+      #
+      # Remapping rather than setting XDG_CONFIG_HOME (nixpak has
+      # bubblewrap.env, which would keep the paths identical inside and out)
+      # is deliberate: this is a real mount, so it holds even for a
+      # component that ignores the variable and opens ~/.config directly.
+      [
+        (sloth.concat' sloth.homeDir "/.config/okular")
+        (sloth.concat' sloth.homeDir "/.config")
+      ]
 
       # Printing. CUPS is reached over this unix socket, which the sandbox
       # otherwise cuts — the symptom is an empty printer list rather than an
@@ -453,6 +486,44 @@ in
   home.file.".local/share/stremio/.keep".text = "";
   home.file.".stremio-server/.keep".text = "";
   home.file.".config/stremio/.keep".text = "";
+
+  # And once more, for every remaining app whose bind targets had never been
+  # created. Auditing all of them against the host on 2026-09-21 turned up
+  # five more dead binds — the four below plus okular's two rc files, which
+  # need different handling and are dealt with after this. In each case the
+  # path was simply missing, bwrap skipped the bind, and the app wrote to its
+  # per-launch tmpfs: the state looks like it "resets" on every start because
+  # it was never reaching disk at all. Signal is the only one of these that
+  # had actually been used, so it is the only one where the bug had a chance
+  # to show itself.
+  #
+  # .config/Signal is the whole Electron profile: config.json (which holds
+  # the SQLCipher key), the sql/ message database, and the device linking
+  # itself. Signal keeps its linking there rather than in a separate
+  # credential store, which is why it asked to be re-linked every launch.
+  #
+  # .config/obsidian is app state — window layout, recent vaults, enabled
+  # plugins — and is distinct from the vault directory pre-created above.
+  # Both binds were listed on the obsidian entry; only the vault one worked.
+  #
+  # .local/share/TelegramDesktop is Telegram's session store, the same shape
+  # of problem as Signal's: without it the QR code has to be re-scanned on
+  # every start.
+  #
+  # .local/share/okular is the docdata directory that okular's own entry
+  # above already calls out as "bind rw or none of it survives a restart".
+  # The bind was right; the directory just never existed.
+  #
+  # .config/okular is the host side of okular's remapped bind — it appears
+  # as ~/.config inside that sandbox, so okularrc, okularpartrc, kdeglobals
+  # and anything else Okular writes all land under it. See the ⚠️ block on
+  # okular's rw list above for why the config is remapped rather than bound
+  # file by file.
+  home.file.".config/Signal/.keep".text = "";
+  home.file.".config/obsidian/.keep".text = "";
+  home.file.".local/share/TelegramDesktop/.keep".text = "";
+  home.file.".local/share/okular/.keep".text = "";
+  home.file.".config/okular/.keep".text = "";
 
   # Keyboard-driven video. VLC is a mouse-first GUI; mpv is a window you shove
   # in a tiling slot and drive from the keyboard. With yt-dlp on PATH
