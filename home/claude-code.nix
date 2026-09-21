@@ -111,6 +111,22 @@ in
     # a Nix string so it reads and diffs like prose.
     context = ./claude-code.md;
 
+    # Skills land at ~/.claude/skills/<name>/, so they are available in every
+    # project rather than only this one — which is the point. The memory
+    # directories consolidate-memory drains live under
+    # ~/.claude/projects/<slug>/, one per repo, and the repo least likely to
+    # need draining is the one holding this config. Source stays here for the
+    # same reason the standing instructions do: version-controlled, reviewable
+    # in a diff, applied at rebuild.
+    #
+    # Passed as a directory rather than a single file so the discovery script
+    # ships next to SKILL.md. That script is deliberately NOT a
+    # writeShellApplication like claude-nixfmt-hook above: the hook needs one
+    # because it calls jq and a pinned nixfmt, whereas this reaches for
+    # nothing beyond coreutils and findutils. A plain file in the skill
+    # directory stays readable and diffs like the prose it sits beside.
+    skills.consolidate-memory = ./skills/consolidate-memory;
+
     # Setting this at all makes home-manager own ~/.claude/settings.json as
     # a read-only store symlink, which means `/config` in the TUI can no
     # longer persist a change — settings move here and get applied with a
@@ -136,21 +152,26 @@ in
       # `git log --oneline -5` but not `git push`. Verified against this
       # Claude Code build that the prefix form matches and that an empty
       # allow list blocks, so these entries are doing real work.
-      # Never run, and never prompt to run: applying a configuration and
-      # writing history are the user's own verbs. `deny` rather than simply
-      # leaving them off `allow`, because an absent rule still produces a
-      # permission prompt, and being asked is the half of this that was
-      # objected to. See ./claude-code.md.
+      # Never run, and never prompt to run: applying a configuration, and
+      # pushing, are the user's own verbs. `deny` rather than simply leaving
+      # them off `allow`, because an absent rule still produces a permission
+      # prompt, and being asked is the half of this that was objected to.
+      # See ./claude-code.md.
       #
-      # The effect is a hard block, not a default — if one of these ever
-      # should be delegated, it gets removed from here deliberately rather
-      # than waved through at a prompt.
+      # `git commit` was in this list and has been moved to `allow`. That is
+      # the deliberate removal the rest of this comment describes, not an
+      # erosion of it: a hard block turned an explicit "commit this" into a
+      # failure, and writing the message is the single most useful thing to
+      # hand over. What replaces the block is prose, not permission — never
+      # commit unless asked for it in that turn.
+      #
+      # `git push` stays denied and is not a candidate: the user has said
+      # outright that they always do the pushing themselves.
       permissions.deny = [
         "Bash(just switch)"
         "Bash(just boot)"
         "Bash(just update)"
         "Bash(nixos-rebuild:*)"
-        "Bash(git commit:*)"
         "Bash(git push:*)"
         "Bash(git checkout:*)"
       ];
@@ -169,10 +190,16 @@ in
         "Bash(just have:*)"
         "Bash(just --list)"
 
-        # Read-only git, plus `git add` — staging is reversible and never
-        # loses work. commit/push/checkout are denied above; `git reset`,
-        # `git clean` and `git rebase` are absent and so keep prompting,
-        # since those can destroy uncommitted work outright.
+        # Read-only git, plus `git add` and `git commit`. Staging is
+        # reversible and never loses work. Committing is allowed because
+        # writing the message is the whole value of delegating it, and
+        # neither a block nor a prompt is wanted in front of an explicit
+        # "commit this". The limit lives in ./claude-code.md instead: only
+        # ever when asked for in that turn, never volunteered.
+        #
+        # push/checkout stay denied above. `git reset`, `git clean` and
+        # `git rebase` are absent and so keep prompting, since those can
+        # destroy uncommitted work outright.
         "Bash(git status:*)"
         "Bash(git diff:*)"
         "Bash(git log:*)"
@@ -182,6 +209,7 @@ in
         "Bash(git remote:*)"
         "Bash(git stash list:*)"
         "Bash(git add:*)"
+        "Bash(git commit:*)"
 
         # Nix introspection. `nix build` is absent: it is not dangerous but
         # it is slow and worth an explicit yes.
