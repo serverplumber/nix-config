@@ -96,7 +96,7 @@ this machine migrated from.
 - `home/` — home-manager config for the `stablefly` user, imported both
   under the NixOS config and standalone (`homeConfigurations.stablefly`).
 - Desktop choice happens at the greeter, not in config: niri, Hyprland and
-  Plasma are all installed; `modules/desktop.nix` owns the ReGreet
+  Plasma are all installed; `modules/desktop.nix` owns the SDDM
   greeter/session wiring; noctalia is the shared shell (bar/launcher/
   notifications/lockscreen) for the two tiling sessions.
 - `modules/caches.nix` and `.nix-config` both configure extra binary
