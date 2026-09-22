@@ -51,8 +51,13 @@
       # home, and check `noctalia config export merged` when a value appears
       # not to take: a stale UI-written key in the state file wins silently.
       #
-      # `checkConfig` defaults to true, so a typo'd key fails the build via
-      # `noctalia config validate` rather than being ignored at runtime.
+      # `checkConfig` runs `noctalia config validate` at build time, but it is
+      # NOT a safety net for typos: an unknown key or section only produces a
+      # WARN and validate still exits 0, so the build passes and the key is
+      # silently ignored at runtime. `noctalia config export merged` echoes
+      # unknown keys back too. Neither tool can tell a real setting from a
+      # misspelt one — check a new key against `config export full`, which
+      # lists only settings noctalia actually has.
       settings = {
         # All three wallpaper directories, explicitly. Empty means "use the
         # XDG Pictures directory", which is ~/Pictures — the camera-roll
@@ -84,6 +89,27 @@
         location = {
           address = "Montreal, Canada";
           auto_locate = false;
+        };
+
+        # Canton Becker's astronomy calendar (moon phases, eclipses, transits).
+        #
+        # Shape lifted verbatim from what the Settings UI wrote, not guessed:
+        # the account is a table under `account.<slot>`, and the URL key is
+        # `server_url`. `[[calendar.account]]` and `url` both looked plausible
+        # and both validate clean — see the checkConfig note above for why that
+        # proves nothing.
+        #
+        # https, not the webcal:// the site advertises: webcal is a pseudo-
+        # scheme clients rewrite before fetching. The published path 302s to
+        # /astronomy-calendar-files/astrocal.ics; kept as-is because that is
+        # the stable public URL and noctalia follows the redirect.
+        calendar = {
+          enabled = true;
+          account.subscription = {
+            name = "AstroCal";
+            server_url = "https://cantonbecker.com/astronomy-calendar/astrocal.ics";
+            type = "ics";
+          };
         };
       };
     };
