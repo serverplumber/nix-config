@@ -562,14 +562,25 @@ in
   };
 
   # foot, moved here from modules/desktop.nix (see the comment there).
-  # Deliberately left at stock defaults, no `settings` block: foot's
-  # out-of-the-box bindings already are the X11 clipboard model. Dragging a
-  # selection copies it to the primary selection, BTN_MIDDLE — a 3-finger tap
-  # on this trackpad — pastes primary back, and Control+Shift+c/v are the
-  # clipboard pair. Shift+drag (foot's `selection-override-modifiers`) takes
-  # the selection back from a TUI that has grabbed the mouse, which is what
-  # makes copying out of helix work.
-  programs.foot.enable = true;
+  # Bindings are left at stock defaults on purpose: foot's out-of-the-box
+  # bindings already are the X11 clipboard model. Dragging a selection copies
+  # it to the primary selection, BTN_MIDDLE — a 3-finger tap on this
+  # trackpad — pastes primary back, and Control+Shift+c/v are the clipboard
+  # pair. Shift+drag (foot's `selection-override-modifiers`) takes the
+  # selection back from a TUI that has grabbed the mouse, which is what makes
+  # copying out of helix work.
+  programs.foot = {
+    enable = true;
+
+    # 5% transparent, to sit over noctalia's blurred backdrop
+    # (modules/noctalia.nix). This is the only setting overridden here.
+    #
+    # alpha applies to the *background colour* only — text and any cell with
+    # an explicit background stay opaque, so legibility does not depend on
+    # what is behind the window. It also needs the compositor to blend; niri
+    # and Hyprland both do, Plasma's Wayland session does too.
+    settings.colors.alpha = 0.95;
+  };
 
   # Double-clicking a text file opens helix in foot, rooted at that file's
   # directory. Two things make the obvious approaches unreliable:
