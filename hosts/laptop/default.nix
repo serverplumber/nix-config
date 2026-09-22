@@ -29,7 +29,13 @@
 
   networking.hostName = "laptop";
   networking.networkmanager.enable = true;
-  time.timeZone = "America/New_York"; # confirmed via timedatectl on Bluefin
+  # NixOS owns /etc/localtime: this sets it to a symlink at
+  # /etc/zoneinfo/America/Montreal. Never write that link by hand — activation
+  # would put it back. Montreal is a tzdata backward-compatibility link to
+  # America/Toronto (byte-identical zone files), and both keep the same
+  # EST/EDT rules as the America/New_York this replaced, so the wall clock
+  # does not move. The point is that the zone names where the machine is.
+  time.timeZone = "America/Montreal";
 
   # Bluefin provided zram; NixOS does not by default.
   zramSwap = {
