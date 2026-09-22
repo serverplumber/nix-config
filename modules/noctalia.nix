@@ -59,6 +59,12 @@
       # misspelt one — check a new key against `config export full`, which
       # lists only settings noctalia actually has.
       settings = {
+        # Blurred, tinted layer between the wallpaper and the windows.
+        # blur_intensity (0.5) and tint_intensity (0.3) are left at their
+        # defaults; the tint colour is not configurable at all — noctalia
+        # always uses palette.surface, so it follows the active theme.
+        backdrop.enabled = true;
+
         # All three wallpaper directories, explicitly. Empty means "use the
         # XDG Pictures directory", which is ~/Pictures — the camera-roll
         # import, full of personal photos that must never end up on a
@@ -75,6 +81,16 @@
           directory = "~/Pictures/Wallpapers";
           directory_dark = "~/Pictures/Wallpapers";
           directory_light = "~/Pictures/Wallpapers";
+
+          # Rotate through the pool. Only `enabled` was actually set in the UI;
+          # interval_seconds = 1800, order = "random" and recursive = true are
+          # noctalia's defaults and are deliberately left undeclared rather
+          # than restated here, so they track upstream.
+          #
+          # Nothing else from the state file's [wallpaper] tree belongs in nix:
+          # default/last/monitors.<output> hold the currently-displayed image
+          # path and are rewritten on every rotation.
+          automation.enabled = true;
         };
 
         # Where the weather widget and the sunrise/sunset schedule think they
