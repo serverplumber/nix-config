@@ -5,16 +5,21 @@ let
   wallhaven-wallpapers = pkgs.callPackage ../pkgs/wallhaven-wallpapers.nix { };
 in
 {
-  # noctalia ships a Wallhaven panel (home/noctalia.nix), but it's an
-  # interactive search-and-pick UI, not a curation feature — there's nothing
-  # there to drive declaratively. Cheaper to just refresh a capped pool of
-  # top wallpapers on disk and let noctalia's existing directory-based random
-  # rotation pick from it like any other local wallpaper.
+  # noctalia ships a Wallhaven panel, but it's an interactive search-and-pick
+  # UI, not a curation feature — there's nothing there to drive declaratively.
+  # Cheaper to just refresh a capped pool of top wallpapers on disk and let
+  # noctalia's existing directory-based random rotation pick from it like any
+  # other local wallpaper.
   #
-  # Point noctalia's wallpaper directory (Settings panel, or
-  # ~/.local/state/noctalia/settings.toml) at ~/Pictures/Wallpapers to use
-  # this pool — that setting lives in noctalia's own mutable state, not
-  # something this flake can own (see home/noctalia.nix's `settings = {}`).
+  # The three directory settings that point noctalia at this pool are declared
+  # in modules/noctalia.nix — NOT set by hand in the Settings UI, which is how
+  # `directory` ended up empty (and therefore meaning all of ~/Pictures, camera
+  # roll included) while only the light/dark pair were right.
+  #
+  # This stays on the home side rather than moving in with them: it is a plain
+  # user unit running a downloader, with nothing noctalia-specific in it, and
+  # keeping it here means the pool still refreshes under the standalone home
+  # profile, which does not get modules/.
   systemd.user.services.wallhaven-wallpapers = {
     Unit = {
       Description = "Refresh the wallhaven toplist wallpaper pool";

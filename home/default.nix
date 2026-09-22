@@ -11,7 +11,6 @@
     ./gui.nix
     ./niri.nix
     ./hyprland.nix
-    ./noctalia.nix
     ./wallhaven.nix
     ./webapps.nix
   ];

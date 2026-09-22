@@ -243,6 +243,16 @@
           # niri-flake's NixOS module imports the HM module itself, and adding
           # it here too declares every niri option twice. See home/niri.nix.
           inputs.niri.homeModules.niri
+
+          # Same shape, different reason: noctalia is declared entirely in
+          # modules/noctalia.nix, which only nixosConfigurations sees. Importing
+          # the module here — without enabling it — is what keeps home/'s
+          # references to `config.programs.noctalia.package` (the idle lock in
+          # home/default.nix, the niri and Hyprland binds) evaluating off NixOS.
+          # So the standalone profile does NOT install the shell: it is a
+          # Wayland shell configured for this laptop, not something that would
+          # mean anything on the macOS case this output exists for.
+          inputs.noctalia.homeModules.default
           ./home
         ];
       };
