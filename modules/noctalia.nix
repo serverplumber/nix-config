@@ -65,6 +65,19 @@
         # always uses palette.surface, so it follows the active theme.
         backdrop.enabled = true;
 
+        # Bar layout, left section only: workspaces and nothing else. The
+        # launcher (magnifying glass) and wallpaper-picker buttons are
+        # noctalia defaults; both open panels that are reachable from
+        # elsewhere, so they were shelf space rather than controls.
+        #
+        # This is the first time the bar's contents are declared here at all.
+        # The cost is that `start` no longer tracks upstream — a widget added
+        # to noctalia's default left section in a later release will not
+        # appear. `center` and `end` are deliberately left undeclared and do
+        # still track: at the time of writing they are ["clock"] and the
+        # eleven-widget tray/status run.
+        bar.default.start = [ "workspaces" ];
+
         # Make the workspace pills show workspace *names*, not indices —
         # without this a named workspace still renders as its number and the
         # name is invisible. Widget settings live in their own
