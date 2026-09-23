@@ -1,8 +1,12 @@
 {
   config,
+  inputs,
   pkgs,
   ...
 }:
+let
+  sidra = inputs.sidra.packages.${pkgs.stdenv.hostPlatform.system}.default;
+in
 {
   # DO NOT import inputs.niri.homeModules.niri here.
   #
@@ -107,7 +111,24 @@
           "--daemon"
         ];
       }
+      # sidra, onto the named workspace declared below. niri has no
+      # equivalent of Hyprland's on-created-empty — the workspace block takes
+      # open-on-output and nothing else (checked with `niri validate`:
+      # on-created-empty is rejected as an unexpected node). So the app is
+      # started at login and the window-rule below routes it, rather than the
+      # workspace pulling it in on first use the way home/hyprland.nix does.
+      #
+      # The visible difference from the Hyprland session: sidra is running
+      # from login here whether or not you ever press Mod+0.
+      { command = [ "${sidra}/bin/sidra" ]; }
     ];
+
+    # Named workspaces are ordinary workspaces in niri — they sit in the
+    # vertical strip and can be scrolled into like any other. There is no
+    # hidden/special class, so this is a label and a monitor pin, nothing
+    # more. Declared here (rather than named at runtime with
+    # `set-workspace-name`) so it is persistent and exists at login.
+    workspaces."sidra".open-on-output = "eDP-1";
 
     input.touchpad = {
       tap = true;
@@ -126,6 +147,13 @@
         default-column-width = {
           proportion = 1.0 / 3.0;
         };
+      }
+      # Routes sidra to its workspace. The app-id pattern matches
+      # home/hyprland.nix's sidra width rule — the binary reports either
+      # case, hence the character class.
+      {
+        matches = [ { app-id = "^[sS]idra$"; } ];
+        open-on-workspace = "sidra";
       }
     ];
 
@@ -368,6 +396,14 @@
       "Mod+Ctrl+7".action = spawn "niri" "msg" "action" "move-column-to-workspace" "7";
       "Mod+Ctrl+8".action = spawn "niri" "msg" "action" "move-column-to-workspace" "8";
       "Mod+Ctrl+9".action = spawn "niri" "msg" "action" "move-column-to-workspace" "9";
+
+      # Mod+0 is sidra's named workspace. Mod+0 was unbound here (unlike the
+      # Hyprland session, where the bind loop folded workspace 10 onto it),
+      # so nothing is displaced. `focus-workspace` takes an index *or* a
+      # name, so the typed action works directly; the move counterpart goes
+      # through `niri msg` like its numbered siblings above.
+      "Mod+0".action = focus-workspace "sidra";
+      "Mod+Ctrl+0".action = spawn "niri" "msg" "action" "move-column-to-workspace" "sidra";
 
       "Mod+Comma".action = consume-window-into-column;
       "Mod+Period".action = expel-window-from-column;

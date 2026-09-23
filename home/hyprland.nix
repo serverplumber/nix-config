@@ -6,6 +6,7 @@
 }:
 let
   hyprPkgs = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system};
+  sidra = inputs.sidra.packages.${pkgs.stdenv.hostPlatform.system}.default;
 
   # Hyprland has no built-in equivalent of niri's show-hotkey-overlay
   # (checked hl.meta.lua — no such dispatcher exists), so this stands in for
@@ -275,6 +276,35 @@ in
       width("vlc-width", "^vlc$", 1.0)
       width("mpv-width", "^u?mpv$", 1.0)
 
+      ------------------------------------------------------------- workspaces
+      -- sidra gets a workspace of its own, on the laptop panel, bound to
+      -- Mod+0 below. Three keys in the rule, each load-bearing:
+      --
+      --   persistent   makes the workspace exist with nothing in it.
+      --                Hyprland otherwise materialises a workspace only when
+      --                a window lands on it, and an empty named workspace is
+      --                exactly what this needs to be at login.
+      --   monitor      pins it to the internal panel. Without it the
+      --                workspace lands wherever the focus happens to be when
+      --                it is first created.
+      --   on_created_empty  runs when the workspace comes into existence with
+      --                no windows, which is what makes it self-populating:
+      --                press Mod+0 on a fresh session and sidra starts.
+      --
+      -- Absolute store path for the same reason as noctalia below — the
+      -- compositor does not reliably inherit the profile's PATH, and a bare
+      -- name that fails to resolve fails silently.
+      --
+      -- niri reaches the same result differently (home/niri.nix): it has no
+      -- on-created-empty hook at all, so the app is started at login and a
+      -- window rule puts it on the workspace.
+      hl.workspace_rule({
+        workspace = "name:sidra",
+        persistent = true,
+        monitor = "eDP-1",
+        on_created_empty = "${sidra}/bin/sidra",
+      })
+
       ---------------------------------------------------------------- startup
       -- noctalia is started by the compositor, not by a systemd user unit;
       -- upstream deprecated the systemd approach. Do not also add a unit.
@@ -479,13 +509,19 @@ in
       hl.bind(mod .. " + F", hl.dsp.layout("fit active"))
       hl.bind(mod .. " + CTRL + F", hl.dsp.layout("fit expand"))
 
-      -- Switch workspaces with mod + [0-9]
-      -- Move active window to a workspace with mod + SHIFT + [0-9]
-      for i = 1, 10 do
-        local key = i % 10 -- 10 maps to key 0
-        hl.bind(mod .. " + " .. key,         hl.dsp.focus({ workspace = i}))
-        hl.bind(mod .. " + SHIFT + " .. key, hl.dsp.window.move({ workspace = i }))
+      -- Switch workspaces with mod + [1-9]
+      -- Move active window to a workspace with mod + SHIFT + [1-9]
+      for i = 1, 9 do
+        hl.bind(mod .. " + " .. i,         hl.dsp.focus({ workspace = i}))
+        hl.bind(mod .. " + SHIFT + " .. i, hl.dsp.window.move({ workspace = i }))
       end
+
+      -- Mod+0 is sidra's named workspace, not workspace 10. The loop used to
+      -- run to 10 and fold it onto key 0; a tenth numbered workspace was
+      -- never reached in practice, and the key is better spent on the one
+      -- workspace whose contents are always the same.
+      hl.bind(mod .. " + 0",         hl.dsp.focus({ workspace = "name:sidra" }))
+      hl.bind(mod .. " + SHIFT + 0", hl.dsp.window.move({ workspace = "name:sidra" }))
 
       -- Special workspace (scratchpad)
       hl.bind(mod .. " + S",         hl.dsp.workspace.toggle_special("magic"))
