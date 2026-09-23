@@ -1,4 +1,4 @@
-{ inputs, ... }: {
+{ inputs, lib, ... }: {
   # Everything noctalia, in one file: the system services its bar and panels
   # read from, and the home-manager declaration of the shell itself. It used
   # to be split across here and home/noctalia.nix, which meant the answer to
@@ -64,6 +64,34 @@
         # defaults; the tint colour is not configurable at all — noctalia
         # always uses palette.surface, so it follows the active theme.
         backdrop.enabled = true;
+
+        # No session buttons on the lock screen: a locked machine offers a
+        # password prompt and nothing else. This drops shutdown, reboot,
+        # logout and suspend together — the setting is all-or-nothing, with
+        # no per-action control (the actions themselves live in
+        # `shell.session.actions`, which is global and still feeds the bar's
+        # session menu; removing shutdown there would take it out of both
+        # places, which is not what is wanted).
+        #
+        # It only applies to the `regular` login-box layout. Under `compact`
+        # the buttons are not drawn at all and this key does nothing.
+        #
+        # Keyed per output, which is the fragile part: the id format is a
+        # fixed `lockscreen-login-box@<output>` with no wildcard and no
+        # per-type default (checked against the docs and the binary's string
+        # table), so a monitor that has never been connected has no entry and
+        # inherits the upstream default of `true`. Adding an output here
+        # costs one word; the entry does not require the display to exist, so
+        # a monitor can be covered before it is ever plugged in.
+        lockscreen_widgets.widget =
+          lib.genAttrs
+            (map (output: "lockscreen-login-box@${output}") [
+              "eDP-1" # the laptop panel
+              "HDMI-A-1" # the desk monitor
+            ])
+            (_: {
+              settings.show_session_buttons = false;
+            });
 
         # Bar layout, left section only: workspaces and nothing else. The
         # launcher (magnifying glass) and wallpaper-picker buttons are
