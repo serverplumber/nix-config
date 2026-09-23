@@ -68,6 +68,11 @@ in
     icons = "auto"; # boolean form is deprecated upstream
   };
 
+  # `tree` as eza, shadowing pkgs.tree if it is ever installed. The fish
+  # integration above already defines ls/ll/la/lla/lt, but not this one — lt
+  # is its tree alias and it is not a name that comes to hand.
+  programs.fish.shellAliases.tree = "eza --tree --icons";
+
   programs.yazi = {
     enable = true;
     enableFishIntegration = true;
