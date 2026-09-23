@@ -65,6 +65,22 @@
         # always uses palette.surface, so it follows the active theme.
         backdrop.enabled = true;
 
+        # Make the workspace pills show workspace *names*, not indices —
+        # without this a named workspace still renders as its number and the
+        # name is invisible. Widget settings live in their own
+        # `[widget.<name>]` table, NOT inline in the bar's widget list: an
+        # entry written as a table inside `bar.default.start` is dropped
+        # silently, taking the whole widget off the bar (measured
+        # 2026-09-23).
+        #
+        # max_label_chars defaults low enough to render one letter, which
+        # looks like the feature not working rather than a width limit. 8 is
+        # enough for the names actually in use; the pill grows to fit.
+        widget.workspaces = {
+          label_source = "name";
+          max_label_chars = 8;
+        };
+
         # All three wallpaper directories, explicitly. Empty means "use the
         # XDG Pictures directory", which is ~/Pictures — the camera-roll
         # import, full of personal photos that must never end up on a
