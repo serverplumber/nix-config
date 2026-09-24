@@ -257,18 +257,30 @@ in
 
       ------------------------------------------------------------- workspaces
       -- sidra gets a workspace of its own, on the laptop panel, bound to
-      -- Mod+0 below. Three keys in the rule, each load-bearing:
+      -- Mod+0 below. Two keys in the rule, each load-bearing:
       --
-      --   persistent   makes the workspace exist with nothing in it.
-      --                Hyprland otherwise materialises a workspace only when
-      --                a window lands on it, and an empty named workspace is
-      --                exactly what this needs to be at login.
       --   monitor      pins it to the internal panel. Without it the
       --                workspace lands wherever the focus happens to be when
       --                it is first created.
       --   on_created_empty  runs when the workspace comes into existence with
       --                no windows, which is what makes it self-populating:
       --                press Mod+0 on a fresh session and sidra starts.
+      --
+      -- `persistent = true` was here as a third, removed 2026-09-24: it
+      -- silently defeated on_created_empty. persistent is what makes the
+      -- workspace already exist, so focusing it is not a creation and the hook
+      -- never fires. With it set, sidra never started and the Hyprland log
+      -- held no mention of it at all; dropping it live and focusing the
+      -- workspace started sidra at once, and a throwaway rule of the same
+      -- shape fired its hook on creation as a control.
+      --
+      -- The cost is the thing persistent bought: the workspace does not exist
+      -- while empty, so it is absent from noctalia's workspace list until
+      -- first use. Accepted — on-demand start is the point of this rule.
+      --
+      -- Re-testing this live: hl.workspace_rule MERGES into the existing rule,
+      -- so omitting a key does not unset it. `persistent = false` has to be
+      -- passed explicitly.
       --
       -- Absolute store path for the same reason as noctalia below — the
       -- compositor does not reliably inherit the profile's PATH, and a bare
@@ -279,7 +291,6 @@ in
       -- window rule puts it on the workspace.
       hl.workspace_rule({
         workspace = "name:sidra",
-        persistent = true,
         monitor = "eDP-1",
         on_created_empty = "${sidra}/bin/sidra",
       })
