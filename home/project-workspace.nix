@@ -144,13 +144,22 @@ let
   # workspace is claimed by number and *renamed*, never created as a
   # name-only workspace.
   #
-  # VERIFIED live on Hyprland 0.56.0 — renaming a numbered workspace keeps it
-  # numbered, which is the fact the whole feature rests on:
+  # VERIFIED live on Hyprland 0.56.0 (f05d73f) — renaming a numbered
+  # workspace keeps it numbered, which is the fact the whole feature rests on:
   #
   #   hl.dsp.workspace.rename({ workspace = 1, name = [[zz-probe]] })
   #   -> {"address":"1","type":"numbered","name":"zz-probe","windows":1}
   #
   # so Mod+1 still reaches it and the bar shows "zz-probe" rather than "1".
+  #
+  # `.type` is NOT how "numbered" is told apart, though. Hyprland e368c13
+  # collapsed the workspace types to "normal" and "special" (eWorkspaceType in
+  # src/workspace/AbstractWorkspace.hpp), so a numbered workspace and sidra
+  # both report "normal". A test on `.type == "numbered"` failed for every
+  # workspace, and the fallback then picked 1 unconditionally — focusing and
+  # renaming whatever workspace 1 was, usually the laptop panel's. The address
+  # is the test that survives: a numbered workspace's is its number, a named
+  # one's is its name.
   #
   # Which slot, on the monitor focused when the key is pressed:
   #
@@ -381,8 +390,8 @@ let
       # success — so nothing below trusts an exit status; `ensure` re-queries
       # instead.
 
-      # A project workspace is numbered AND named, so `.type` is "numbered"
-      # here, not "named": match on the name alone.
+      # A project workspace is numbered AND named, so its address is a number
+      # and only its name identifies it: match on the name alone.
       hyprland_exists() {
         hyprctl -j workspaces \
           | jq -e --arg n "$ws" 'any(.[]; .name == $n)' >/dev/null
@@ -402,8 +411,9 @@ let
       # Project name -> workspace address, empty if there is no such workspace.
       #
       # Every reference below goes through this, and the `name:` selector is
-      # gone from this file entirely. VERIFIED live, the hard way: `name:` only
-      # ever matches a workspace of type "named", so spawning with
+      # gone from this file entirely. VERIFIED live, the hard way (on f05d73f,
+      # before the type field lost "named"): `name:` only ever matched a
+      # workspace created by name, never a renamed numbered one, so spawning with
       # `name:zz-probe` while workspace 1 was renamed to zz-probe created a
       # SECOND, genuinely-named workspace and put the window on that, leaving
       # the project workspace half-populated with no error anywhere.
@@ -446,16 +456,17 @@ let
       # `.name == .address` test is what keeps an emptied-out project
       # workspace from being handed to a different project.
       #
-      # The `.address | test(...)` guard is belt and braces: it keeps anything
-      # whose address is not a plain integer (special workspaces) out of the
-      # arithmetic regardless of what `.type` says.
+      # `numeric` is the address alone, not `.type` — see the block comment
+      # above for why the type field cannot answer "numbered" any more. An
+      # integer address is what a numbered workspace has, and neither a named
+      # one (sidra) nor a special one does.
       hyprland_target() {
         local wss mons
         wss=$(hyprctl -j workspaces)
         mons=$(hyprctl -j monitors)
 
         printf '%s' "$mons" | jq -r --argjson ws "$wss" '
-          def numeric: .type == "numbered" and (.address | test("^[0-9]+$"));
+          def numeric: .address | test("^[0-9]+$");
           first(.[] | select(.focused)) as $m
           | ($m.activeWorkspace.address) as $cur
           | ([$ws[] | select(.address == $cur)] | first) as $curws
