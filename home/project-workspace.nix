@@ -211,7 +211,7 @@ let
     ];
     text = ''
       usage() {
-        echo "usage: project-ws <exists|ensure|focus|spawn> <workspace> [cmd...]" >&2
+        echo "usage: project-ws <exists|ensure|focus|windows|spawn> <workspace> [cmd...]" >&2
         exit 2
       }
 
@@ -250,6 +250,23 @@ let
 
       niri_focus() {
         niri msg action focus-workspace "$ws"
+      }
+
+      # The same list as hyprland_windows, one app-id per line.
+      #
+      # ASSUMED, not tested, for the same reason as niri_target's count: a
+      # window carries .workspace_id and a workspace carries no window list,
+      # so this is that same join, keyed here by name rather than by the
+      # focused output. If the assumption is wrong the symptom is Mod+A
+      # opening a second copy of everything onto a workspace that already has
+      # it, rather than anything silent.
+      niri_windows() {
+        local wins
+        wins=$(niri msg -j windows)
+        niri msg -j workspaces | jq -r --arg n "$ws" --argjson wins "$wins" '
+          (first(.[] | select(.name == $n) | .id) // empty) as $id
+          | $wins[] | select(.workspace_id == $id) | .app_id // ""
+        '
       }
 
       # The index to claim on the focused output, or nothing if there is none.
@@ -369,6 +386,17 @@ let
       hyprland_exists() {
         hyprctl -j workspaces \
           | jq -e --arg n "$ws" 'any(.[]; .name == $n)' >/dev/null
+      }
+
+      # The app-ids of the windows on this workspace, one per line; nothing at
+      # all when the workspace does not exist. `.workspace.name` on a client
+      # is the *name* of a renamed numbered workspace, not its number —
+      # verified live, where the window this was written from reports
+      # workspace.name = nix-config — so this needs none of hyprland_addr's
+      # `name:` care.
+      hyprland_windows() {
+        hyprctl -j clients \
+          | jq -r --arg n "$ws" '.[] | select(.workspace.name == $n) | .class // ""'
       }
 
       # Project name -> workspace address, empty if there is no such workspace.
@@ -501,9 +529,10 @@ let
 
       # ----------------------------------------------------------- dispatch
       case "$op" in
-        exists) "''${compositor}_exists" ;;
-        ensure) "''${compositor}_ensure" ;;
-        focus)  "''${compositor}_focus" ;;
+        exists)  "''${compositor}_exists" ;;
+        ensure)  "''${compositor}_ensure" ;;
+        focus)   "''${compositor}_focus" ;;
+        windows) "''${compositor}_windows" ;;
         spawn)
           [ "$#" -gt 0 ] || usage
           "''${compositor}_spawn" "$@"
@@ -521,14 +550,6 @@ let
   # workspace — is exactly right. To place one from elsewhere, go through
   # `project-ws spawn <name> project-agent <name>`, which is what the
   # orchestrator does.
-  #
-  # KNOWN LIMITATION, not solved here: a window spawned by the compositor gets
-  # the compositor's environment, so neither the editor nor the agent picks up
-  # the project's direnv/devShell. Both run in the project directory, so a
-  # `direnv allow`ed repo still needs the shell hook that neither of these
-  # goes through. Fixing it means routing through an interactive fish, which
-  # changes what happens when the program exits; left alone until it actually
-  # bites.
 
   # No `--` before the command: foot stops parsing options at the first
   # non-option argument and treats the rest as the command, so the separator
@@ -614,6 +635,59 @@ let
       esac
     '';
   };
+  # The app-ids the two foot windows are launched with, and the class Brave
+  # gives its own windows. Bound once because these are now *matched* as well
+  # as set — the orchestrator asks the compositor which of them are already on
+  # the workspace — and a literal spelled in two places drifts into "always
+  # missing", which shows up as a duplicate window rather than as an error.
+  #
+  # brave-browser is Brave's own class, shared by every Brave window whether
+  # it belongs to this project or not, so the browser test is really "is there
+  # a Brave window on this workspace". Making it exact would mean passing
+  # --class, which costs the bar its icon lookup: nothing in
+  # share/applications matches an invented class. The loose match is the
+  # better trade — its failure is a browser window dragged onto the workspace
+  # suppressing a relaunch, not a wrong window being opened.
+  appIds = {
+    term = "project-term";
+    agent = "project-agent";
+    browser = "brave-browser";
+  };
+
+  # Turn job control on, then start `cmd`, both from fish's `-C` init.
+  #
+  # `fish -C <cmd>` on its own does not give it. fish sets up job control only
+  # for commands it treats as interactive, and init commands are not among
+  # those, so the program is forked into fish's *own* process group and the
+  # terminal is never handed over — measured: under a bare `-C` the child's
+  # pgid is fish's pgid, and its own once this is on. Ctrl-Z then goes to a
+  # foreground group containing the shell, stopping both, with nothing left
+  # running to repaint a prompt: the window wedges, which is the exact failure
+  # the shell underneath these two was put there to prevent.
+  #
+  # THE OTHER FORM ABORTS FISH — do not go back to it. Starting the program by
+  # injecting it into the reader instead (an `--on-event fish_prompt` handler
+  # doing `commandline --replace` then `commandline --function execute`) also
+  # gives job control, and additionally records the command in history so that
+  # restarting after an exit is one Up-arrow. It also does this, every time,
+  # in a terminal that answers queries:
+  #
+  #   thread 'main' panicked at src/reader/reader.rs:1728:9:
+  #   assertion failed: query.is_none()
+  #
+  # fish has a terminal query outstanding while it builds its first prompt,
+  # and executing a command from inside that event leaves a second in flight.
+  # Reproduced in foot with a core dump each time; the window dies before the
+  # editor or the agent is ever reached.
+  #
+  # It does NOT reproduce under a bare pty (`script`), where nothing answers
+  # the queries, fish gives up on them after ten seconds and disables the
+  # feature that holds the assertion. That is exactly how it got written: the
+  # harness could not see a bug the real terminal hits on every launch. Verify
+  # anything in this area in a foot window, not in a pty.
+  #
+  # The price is the history entry, and an abort is not worth it.
+  startAsJob = cmd: "status job-control full; ${cmd}";
 
   # Distinct app-ids so the two foot windows are tellable apart by window
   # rules and by `niri msg -j windows` / `hyprctl -j clients` when debugging.
@@ -631,25 +705,27 @@ let
       # pid 1 of the pty there is no shell underneath it, so Ctrl-Z suspends
       # it into nothing and quitting it closes the window. Started as a job
       # from fish, Ctrl-Z drops to a prompt in the project directory and `fg`
-      # goes back.
+      # goes back — but only when it is started the way startAsJob starts it.
+      # See the comment there: `-C` alone gives a shell with no job control,
+      # which is a window that wedges on Ctrl-Z rather than one that suspends.
       #
-      # fish's `-C` runs after config.fish but BEFORE the first prompt, which
-      # matters because direnv's fish integration hooks the prompt event — so
-      # a bare `fish -C hx` would start helix before direnv had loaded
-      # anything. Wrapping fish in project-env instead loads the environment
-      # first and hands it to fish, so helix has it from its first
-      # millisecond. Verified: with an allowed .envrc exporting FOO, the -C
-      # command sees FOO=bar through project-env.
+      # fish is wrapped in project-env rather than left to its own direnv
+      # integration. That integration hooks the prompt event, and the program
+      # is now started from the prompt event too, so leaning on it would be a
+      # race over which handler runs first. project-env loads the environment
+      # before fish starts instead, so helix has it from its first millisecond
+      # and the shell inherits it. Verified: with an allowed .envrc exporting
+      # FOO, the started command sees FOO=bar through project-env.
       #
       # That also keeps the blocked-.envrc warning on the path, which fish's
       # own integration would not give.
       exec ${pkgs.foot}/bin/foot \
-        --app-id=project-term \
+        --app-id=${appIds.term} \
         --title="$name — helix" \
         --working-directory="$dir" \
         ${projectEnv}/bin/project-env "$dir" \
         ${config.programs.fish.package}/bin/fish \
-        -C '${config.programs.helix.package}/bin/hx'
+        -C '${startAsJob "${config.programs.helix.package}/bin/hx"}'
     '';
   };
 
@@ -665,23 +741,23 @@ let
       dir="''${PROJECT_ROOT:-${projectRoot}}/$name"
       [ -d "$dir" ] || { echo "project-agent: no such project: $dir" >&2; exit 1; }
 
-      # Same shape as project-term above, and for the same reason — see the
-      # comment there for why fish is wrapped in project-env rather than
-      # relying on its own direnv hook.
+      # Same shape as project-term above, and for the same reasons — see the
+      # comments there for why fish is wrapped in project-env, and startAsJob
+      # for why `-C` alone is not enough to start it as a job.
       #
       # The agent gets a shell under it too. Ctrl-Z is the smaller half of
       # why: the larger one is that when claude exits — and it exits far more
       # often than an editor does, on /quit, on a crash, on a context limit —
       # the window survives with a prompt in the project directory instead of
-      # vanishing. Re-running it is then one `claude` (or one Up-arrow),
+      # vanishing. Re-running it is then one `claude` typed at that prompt,
       # rather than project-agent from somewhere else.
       exec ${pkgs.foot}/bin/foot \
-        --app-id=project-agent \
+        --app-id=${appIds.agent} \
         --title="$name — claude" \
         --working-directory="$dir" \
         ${projectEnv}/bin/project-env "$dir" \
         ${config.programs.fish.package}/bin/fish \
-        -C '${config.programs.claude-code.package}/bin/claude'
+        -C '${startAsJob "${config.programs.claude-code.package}/bin/claude"}'
     '';
   };
 
@@ -758,19 +834,32 @@ let
         exit 1
       fi
 
-      if project-ws exists "$name"; then
-        project-ws focus "$name"
-        exit 0
-      fi
+      # Create the workspace if it is not there, then put into it whatever is
+      # missing. One path rather than two, because a freshly created
+      # workspace is just the case where all three are missing and a project
+      # whose agent was closed is the case where one is. That is what makes
+      # Mod+A on an already-open project relaunch rather than only focus, and
+      # it picks up the case that used to be useless for free: a project
+      # workspace whose windows have all been closed is no longer focused
+      # empty.
+      project-ws exists "$name" || project-ws ensure "$name"
 
-      project-ws ensure "$name"
+      # Presence is decided per *window*, not per program. A project-term
+      # window where helix was quit on purpose counts as present: what is left
+      # is a shell in the project directory, which is worth keeping, and
+      # pushing an editor back into it is the opposite of what quitting asked
+      # for. The cost is the other side of the same coin — a program that died
+      # without taking its window with it is invisible here, and restarting it
+      # is a matter of typing its name at the prompt that is already there.
+      have=$(project-ws windows "$name")
+      has() { [[ $'\n'"$have"$'\n' == *$'\n'"$1"$'\n'* ]]; }
 
       # Browser last: it is the slowest to map, and under niri each spawn
       # blocks until its window appears, so both terminals are already usable
       # while it is still starting.
-      project-ws spawn "$name" ${projectTerm}/bin/project-term "$name"
-      project-ws spawn "$name" ${projectAgent}/bin/project-agent "$name"
-      project-ws spawn "$name" ${projectBrowser}/bin/project-browser "$name"
+      has ${appIds.term} || project-ws spawn "$name" ${projectTerm}/bin/project-term "$name"
+      has ${appIds.agent} || project-ws spawn "$name" ${projectAgent}/bin/project-agent "$name"
+      has ${appIds.browser} || project-ws spawn "$name" ${projectBrowser}/bin/project-browser "$name"
 
       project-ws focus "$name"
     '';
