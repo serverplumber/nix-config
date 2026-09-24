@@ -263,6 +263,11 @@ in
       # below will therefore appear to do nothing — change it there, not here.
       # Mod+Alt+Backspace (lock + caffeine) is untouched by that module.
       #
+      # Two more b-key binds are also declared elsewhere, so they are not
+      # missing from this block: Mod+b (lock + caffeine + SD backup) in
+      # modules/sdbackup.nix, and Mod+Alt+b (black background, rotation off)
+      # in home/wallpapers.nix.
+      #
       # caffeine-disable after lock: a plain lock overrides whatever caffeine
       # state was left over from an earlier Mod+Alt+Backspace, same reasoning
       # as modules/sdbackup.nix's lockThen — a lock key should leave caffeine

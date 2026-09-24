@@ -42,6 +42,7 @@ let
 
     ◆⌫                    lock (see modules/sdbackup.nix)
     ◆b                    lock + caffeine + SD backup (see modules/sdbackup.nix)
+    ◆⌥b                   black background, rotation off — toggle (see home/wallpapers.nix)
 
     -- hjkl = focus, arrows = move · h/l = columns, j/k = window stack --
     ◆h / ◆l               focus column left / right
@@ -357,7 +358,9 @@ in
 
       -- Mod+Alt+Backspace: lock + caffeine, mirroring home/niri.nix's own
       -- bind (untouched by modules/sdbackup.nix on either compositor — that
-      -- module only owns plain Backspace and Mod+b). caffeine-enable is an
+      -- module only owns plain Backspace and Mod+b — Mod+Alt+b is the
+      -- wallpaper blackout toggle, bound from home/wallpapers.nix, which
+      -- appends to this `extraConfig` too). caffeine-enable is an
       -- absolute set, not a toggle, so this always ends caffeinated
       -- regardless of prior state — same "lock overrides caffeine" reasoning
       -- as niri's bind and sdbackup.nix's lockThen.

@@ -129,8 +129,10 @@
         # pointed at the curated pool; `directory` was left empty and so
         # resolved to the whole of ~/Pictures.
         #
-        # ~/Pictures/Wallpapers is filled by home/wallhaven.nix (the wallhaven
-        # toplist pool). noctalia expands the leading `~` itself, and this is
+        # ~/Pictures/Wallpapers is filled by home/wallpapers.nix (the wallhaven
+        # toplist and subreddit pools, each capped separately and each owning
+        # its own filename prefix). noctalia expands the leading `~` itself,
+        # and this is
         # the exact spelling its Settings UI writes, so the declared value and
         # a UI-set one are byte-identical rather than one being an absolute
         # path that silently shadows the other.

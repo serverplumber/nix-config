@@ -180,7 +180,9 @@ in
       # mkForce/override mechanism, so this must never bind a combo that
       # home/hyprland.nix also binds (two hl.bind() calls on the same combo
       # would race). "SUPER + Backspace" and "SUPER + b" are both new here
-      # for exactly that reason. "SUPER + ALT + Backspace" (lock + caffeine)
+      # for exactly that reason — as is "SUPER + ALT + b", which
+      # home/wallpapers.nix binds to the wallpaper blackout toggle by
+      # appending to this same `extraConfig`. "SUPER + ALT + Backspace" (lock + caffeine)
       # is the one exception: it's bound in home/hyprland.nix itself, not
       # here, mirroring niri's "Mod+Alt+Backspace is deliberately NOT
       # touched" above — same key, deliberately left alone by this module.

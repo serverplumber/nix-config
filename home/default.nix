@@ -12,7 +12,7 @@
     ./niri.nix
     ./hyprland.nix
     ./project-workspace.nix
-    ./wallhaven.nix
+    ./wallpapers.nix
     ./webapps.nix
   ];
   # ***
