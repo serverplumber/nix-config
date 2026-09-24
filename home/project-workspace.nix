@@ -164,13 +164,21 @@ let
   # Which slot, on the monitor focused when the key is pressed:
   #
   #   1. the focused workspace, if it is empty AND numbered AND unclaimed;
-  #   2. otherwise the lowest free number — 1..9 first, since those are the
-  #      ones with binds, then upward.
+  #   2. otherwise the lowest number no workspace has — 1..9 first, since
+  #      those are the ones with binds, then upward.
   #
-  # "unclaimed" is load-bearing and is NOT the same as "numbered". Once this
-  # feature has run, a workspace can be numbered *and* named, so an empty
-  # numbered workspace may well be an existing project workspace (or sidra)
-  # whose windows have all been closed; renaming one would silently steal it.
+  # "No workspace has" means any workspace at all, empty or not. An empty
+  # workspace that still exists is one some monitor is showing — Hyprland
+  # reaps the others (below) — and focusing it moves focus to that monitor.
+  # Counting empty unnamed ones as free sent a project to the laptop panel
+  # while HDMI was focused: HDMI's workspace had windows, so rule 1 passed,
+  # and the laptop's visible empty workspace 1 was "free". The one empty
+  # workspace that is safe to hand out is the focused one, and that is rule 1.
+  #
+  # Rule 1's "unclaimed" is load-bearing and is NOT the same as "numbered".
+  # Once this feature has run, a workspace can be numbered *and* named, so an
+  # empty numbered workspace may well be an existing project workspace whose
+  # windows have all been closed; renaming one would silently steal it.
   # Hyprland reports an untouched workspace's number as its name
   # ({"address":"2","name":"2"}), so `.name == .address` is exactly the test
   # for "nobody has claimed this", and it keeps working after the rename.
@@ -454,7 +462,8 @@ let
 
       # The number to claim. See the block comment above for the rule; the
       # `.name == .address` test is what keeps an emptied-out project
-      # workspace from being handed to a different project.
+      # workspace from being handed to a different project by rule 1. Rule 2
+      # needs no such test: every existing numbered workspace is taken.
       #
       # `numeric` is the address alone, not `.type` — see the block comment
       # above for why the type field cannot answer "numbered" any more. An
@@ -470,8 +479,7 @@ let
           first(.[] | select(.focused)) as $m
           | ($m.activeWorkspace.address) as $cur
           | ([$ws[] | select(.address == $cur)] | first) as $curws
-          | ([$ws[] | select(numeric) | select(.windows > 0 or .name != .address)
-                    | (.address | tonumber)]) as $claimed
+          | ([$ws[] | select(numeric) | (.address | tonumber)]) as $claimed
           | def free: . as $n | select(($claimed | index($n)) == null);
             if ($curws != null and ($curws | numeric)
                 and $curws.windows == 0 and $curws.name == $curws.address)
