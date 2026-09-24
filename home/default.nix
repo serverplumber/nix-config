@@ -11,6 +11,7 @@
     ./gui.nix
     ./niri.nix
     ./hyprland.nix
+    ./project-workspace.nix
     ./wallhaven.nix
     ./webapps.nix
   ];

@@ -37,6 +37,7 @@ let
     ◆e                    file manager
     ◆v                    toggle floating
     ◆d                    launcher
+    ◆a                    project workspace (see home/project-workspace.nix)
     ◆⌥⌫                   lock + caffeine
 
     ◆⌫                    lock (see modules/sdbackup.nix)
@@ -259,6 +260,16 @@ in
       width("foot-width", "^foot$", 1 / 3)
       width("helix-width", "^helix$", 1 / 3)
 
+      -- The two foot windows home/project-workspace.nix opens. They are
+      -- terminals and belong in this tier, but they carry their own app-ids
+      -- rather than `foot` so that the editor and the agent are tellable
+      -- apart in `hyprctl clients` and can be targeted separately. That is
+      -- worth keeping — but it means they match neither rule above, and
+      -- without these two lines they open at the default width. Any new
+      -- app-id introduced there needs a line here.
+      width("project-term-width", "^project-term$", 1 / 3)
+      width("project-agent-width", "^project-agent$", 1 / 3)
+
       -- 2/3 — browsers and IDEs. All three JetBrains IDEs (home/dev.nix
       -- installs idea/goland/pycharm) match one pattern; their desktop
       -- files declare jetbrains-idea, jetbrains-goland and
@@ -358,6 +369,12 @@ in
       hl.bind(mod .. " + E", hl.dsp.exec_cmd(fileManager))            -- kept
       hl.bind(mod .. " + V", hl.dsp.window.float({ action = "toggle" })) -- already matches niri
       hl.bind(mod .. " + D", hl.dsp.exec_cmd(menu))                   -- niri: Mod+D
+
+      -- ⚠️ Mod+A is bound in home/project-workspace.nix, not here — pick a
+      -- project from ~/code and open (or focus) a workspace named after it,
+      -- carrying an editor, an agent and a browser profile. That file
+      -- appends to this `extraConfig` the same way modules/sdbackup.nix
+      -- does, so do NOT also bind SUPER + A below.
 
       -- Mod+Alt+Backspace: lock + caffeine, mirroring home/niri.nix's own
       -- bind (untouched by modules/sdbackup.nix on either compositor — that

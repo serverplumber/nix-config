@@ -157,6 +157,13 @@ in
         matches = [
           { app-id = "^foot$"; }
           { app-id = "^helix$"; }
+          # The two foot windows home/project-workspace.nix opens. They carry
+          # their own app-ids rather than `foot` so the editor and the agent
+          # can be told apart and targeted separately, which means they match
+          # neither pattern above and would otherwise open at niri's 50%
+          # preset. Mirrors the same two lines in home/hyprland.nix.
+          { app-id = "^project-term$"; }
+          { app-id = "^project-agent$"; }
         ];
         default-column-width = {
           proportion = 1.0 / 3.0;
@@ -222,6 +229,11 @@ in
       "Mod+Shift+Slash".action = show-hotkey-overlay;
 
       "Mod+T".action = spawn "${pkgs.foot}/bin/foot";
+
+      # ⚠️ Mod+A is bound in home/project-workspace.nix, not here — pick a
+      # project from ~/code and open (or focus) a workspace named after it,
+      # carrying an editor, an agent and a browser profile. Kept with the
+      # scripts it drives, same reasoning as modules/sdbackup.nix's binds.
 
       "Mod+D".action =
         spawn "${config.programs.noctalia.package}/bin/noctalia" "msg" "panel-toggle"
