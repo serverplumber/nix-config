@@ -300,7 +300,7 @@ let
   ### script mode yields bin/soffice alone and no share/applications, hence
   ### the hand-written desktop entry below.
   libreoffice = sandbox {
-    package = pkgs.libreoffice-fresh;
+    package = pkgs.libreoffice-stable;
     appId = "org.libreoffice.LibreOffice";
     mode = "script";
     binPath = "bin/soffice";

@@ -79,16 +79,30 @@ in
     # undocked too. Restarting the session is required either way; it is not a
     # live setting.
     #
+    # #3674 shows as closed, which is misleading and was checked 2026-09-24:
+    # closed by a non-maintainer, and the PR that would have fixed it —
+    # niri#3678, "tty: auto-select render node based on connected external
+    # outputs" — was closed *unmerged*. niri still picks the iGPU by default,
+    # so the trade-off above stands as written.
+    #
     # debug.render-drm-device = "/dev/dri/by-path/pci-0000:01:00.0-render";
     #
     # ***
     #
-    # Known upstream bug, still unresolved: after suspend/resume, HDMI-A-1
-    # (the only output on the 4070/card0 — see above) can come back stuck.
-    # niri spams "Page flip commit failed on device /dev/dri/card0 (Invalid
-    # argument (os error 22))" — observed 2756 times in ~36s on 2026-08-15 —
-    # then gives up and the output just stays dark. This is niri-wm/niri#3384
-    # (same error signature, same NVIDIA-hybrid shape), open, no fix.
+    # Known upstream bug: after suspend/resume, HDMI-A-1 (the only output on
+    # the 4070/card0 — see above) can come back stuck. niri spams "Page flip
+    # commit failed on device /dev/dri/card0 (Invalid argument (os error 22))"
+    # — observed 2756 times in ~36s on 2026-08-15 — then gives up and the
+    # output just stays dark. This is niri-wm/niri#3384 (same error signature,
+    # same NVIDIA-hybrid shape).
+    #
+    # Status checked 2026-09-24, and "open, no fix" is no longer literally
+    # true: #3384 was closed as completed on 2026-08-29. Treat that as
+    # bookkeeping rather than a fix — it was closed by a non-maintainer with
+    # no linked PR, and the 31-comment thread names no landed change. Nothing
+    # here changes either way yet: the `niri` input is niri-flake, whose HEAD
+    # has not moved since 2026-08-04, so an update brings no new niri at all.
+    # Re-test the suspend/resume path when that input actually moves.
     #
     # niri does NOT self-recover from this — confirmed by testing, not just
     # log-reading: the connector disconnect/reconnect that eventually shows
