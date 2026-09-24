@@ -127,6 +127,20 @@ in
     # directory stays readable and diffs like the prose it sits beside.
     skills.consolidate-memory = ./skills/consolidate-memory;
 
+    # The update ritual for this repo: triage what a rebuild printed, predict
+    # what moving the pins brings in, re-test every local kludge that exists
+    # only to cover an upstream defect. Machine-wide like the one above rather
+    # than a project skill under ./.claude, for two reasons: the messages it
+    # triages are printed by `nixos-rebuild` in whatever terminal the user
+    # happens to be in, and the audit it performs is against *this* machine's
+    # running system — neither is reachable from the repo it edits.
+    #
+    # Same plain-file treatment as discover.sh above: survey.sh reaches for
+    # nix, git, grep and jq, all of which this config already guarantees on
+    # PATH (jq via ./dev.nix), so wrapping it in a derivation would buy
+    # nothing and cost the readable diff.
+    skills.flake-update = ./skills/flake-update;
+
     # Setting this at all makes home-manager own ~/.claude/settings.json as
     # a read-only store symlink, which means `/config` in the TUI can no
     # longer persist a change — settings move here and get applied with a
