@@ -135,9 +135,23 @@ in
       natural-scroll = true;
     };
 
-    # Terminals open at 1/3 width instead of niri's 50% preset: the plain
-    # foot terminal (Mod+T) and the foot instance gui.nix's Helix.desktop
-    # spawns with --app-id=helix for editing in a terminal.
+    # Default column widths, in three tiers, against niri's 50% preset.
+    # These mirror the `width(...)` rules in home/hyprland.nix one for one —
+    # that file's header carries the reasoning for the tiers themselves and
+    # for where each app-id came from; this is the same table in niri's
+    # spelling, and the two must be changed together.
+    #
+    # niri matches on `app-id` where Hyprland matches on `class`. For Wayland
+    # clients those are the same string. For XWayland ones they arrive by
+    # different routes — niri's come via xwayland-satellite mapping WM_CLASS
+    # — so an X11-only app is the kind that could need a different pattern
+    # here than there.
+    #
+    # Confirmed against a running session on 2026-09-23 rather than taken on
+    # trust: foot reports `foot`, Brave `brave-browser`, sidra `sidra`, and
+    # Stremio `com.stremio.Stremio` — which is the branch of the stremio
+    # pattern hyprland.nix guessed at, now known good. vlc and mpv were not
+    # running and remain unverified guesses in both files.
     window-rules = [
       {
         matches = [
@@ -148,6 +162,37 @@ in
           proportion = 1.0 / 3.0;
         };
       }
+
+      # 2/3 — browsers and IDEs. All three JetBrains IDEs (home/dev.nix
+      # installs idea/goland/pycharm) match one pattern. Epiphany web apps
+      # (home/webapps.nix) are deliberately excluded, same as in
+      # home/hyprland.nix: they are single-purpose windows, not a browser
+      # you sit in.
+      {
+        matches = [
+          { app-id = "^brave-browser$"; }
+          { app-id = "^firefox$"; }
+          { app-id = "^jetbrains-.*$"; }
+        ];
+        default-column-width = {
+          proportion = 2.0 / 3.0;
+        };
+      }
+
+      # Full width — the media apps that are the only thing on screen while
+      # they are up.
+      {
+        matches = [
+          { app-id = "^[sS]idra$"; }
+          { app-id = "^(com\\.stremio\\.Stremio|[sS]tremio.*)$"; }
+          { app-id = "^vlc$"; }
+          { app-id = "^u?mpv$"; }
+        ];
+        default-column-width = {
+          proportion = 1.0;
+        };
+      }
+
       # Routes sidra to its workspace. The app-id pattern matches
       # home/hyprland.nix's sidra width rule — the binary reports either
       # case, hence the character class.
@@ -177,6 +222,7 @@ in
       "Mod+Shift+Slash".action = show-hotkey-overlay;
 
       "Mod+T".action = spawn "${pkgs.foot}/bin/foot";
+
       "Mod+D".action =
         spawn "${config.programs.noctalia.package}/bin/noctalia" "msg" "panel-toggle"
           "launcher";
