@@ -5,6 +5,7 @@
 }:
 {
   imports = [
+    ./aliases.nix
     ./cli.nix
     ./claude-code.nix
     ./dev.nix
