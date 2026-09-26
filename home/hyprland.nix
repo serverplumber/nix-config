@@ -284,6 +284,19 @@ in
       -- global's timing.
       hl.animation({ leaf = "fadeSwitch", enabled = true, speed = 5, bezier = "default" })
 
+      -- No blur behind translucent windows. Hyprland blurs by default, which
+      -- turned the wallpaper seen through a faded window into a smear; the
+      -- point of the group is to see the wallpaper. Global, not per window —
+      -- it only shows behind translucent ones anyway. noctalia's backdrop
+      -- blur is separate (modules/noctalia.nix).
+      hl.config({
+        decoration = {
+          blur = {
+            enabled = false,
+          },
+        },
+      })
+
       ------------------------------------------------------------- workspaces
       -- sidra gets a workspace of its own, on the laptop panel, bound to
       -- Mod+0 below. Two keys in the rule, each load-bearing:
