@@ -1,4 +1,10 @@
-{ inputs, lib, ... }: {
+{
+  inputs,
+  lib,
+  pkgs,
+  ...
+}:
+{
   # Everything noctalia, in one file: the system services its bar and panels
   # read from, and the home-manager declaration of the shell itself. It used
   # to be split across here and home/noctalia.nix, which meant the answer to
@@ -187,8 +193,8 @@
           };
         };
 
-        # Render the palette into foot and helix, so both follow the shell's
-        # theme. Each half needs a matching line elsewhere, because noctalia's
+        # Render the palette into foot, helix and sidra, so they follow the
+        # shell's theme. The two built-in templates each need a matching line elsewhere, because noctalia's
         # way of switching an app over to its theme does not work here:
         #
         #   - foot's template ends with a script that adds an `include=` to
@@ -211,6 +217,51 @@
             "foot"
             "helix"
           ];
+
+          # sidra (the Apple Music client) has no built-in or community
+          # template, so this is a user one. Sidra reads
+          # userData/custom-theme.json, watches it and re-applies it live.
+          # Picking "Custom Theme" once in sidra's settings is still needed;
+          # that choice lives in sidra's own mutable config.json, not here.
+          #
+          # Sidra accepts only exact `#rrggbb` values in all 12 slots and
+          # rejects the whole file if one is off. The auto_lightness output
+          # was checked to stay in that form.
+          #
+          # Only `dark` is written, from the `default` (active) mode. Sidra
+          # uses it for light too, so sidra follows noctalia's mode rather
+          # than its own light/dark detection, as the foot template does.
+          #
+          # The slot names are Catppuccin's, where mantle and crust are darker
+          # than base. Material 3 expresses depth the other way round, as
+          # containers raised above the surface, so shelves and the player
+          # take surface_container_low and the footer the lowest container.
+          # accentHover has no Material token; auto_lightness moves primary
+          # toward mid-lightness, which reads as a pressed state in both modes.
+          user.sidra = {
+            input_path = pkgs.writeText "sidra-custom-theme.json" (
+              builtins.toJSON {
+                dark =
+                  lib.mapAttrs (_: token: "{{ colors.${token}.default.hex }}") {
+                    base = "surface";
+                    mantle = "surface_container_low";
+                    crust = "surface_container_lowest";
+                    surface0 = "surface_container";
+                    surface1 = "surface_container_high";
+                    surface2 = "outline_variant";
+                    overlay = "outline";
+                    text = "on_surface";
+                    subtext1 = "on_surface_variant";
+                    subtext0 = "on_surface_variant";
+                    accent = "primary";
+                  }
+                  // {
+                    accentHover = "{{ colors.primary.default.hex | auto_lightness 8 }}";
+                  };
+              }
+            );
+            output_path = "$XDG_CONFIG_HOME/Sidra/custom-theme.json";
+          };
         };
       };
     };
