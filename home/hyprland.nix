@@ -256,6 +256,34 @@ in
       width("vlc-width", "^vlc$", 1.0)
       width("mpv-width", "^u?mpv$", 1.0)
 
+      ----------------------------------------------------------- translucent
+      -- Windows that are nearly opaque while focused and fade back to show
+      -- the wallpaper when they aren't. Opt-in per app, like the widths
+      -- above: add a translucent(...) line to put a window in the group.
+      -- home/niri.nix mirrors the group as two rules; change both together.
+      --
+      -- The opacity string is "<focused> <unfocused>". With two values the
+      -- fullscreen opacity stays at 1, so a fullscreened member is opaque.
+      -- A window rule rather than a launch-time exec rule: an exec rule
+      -- binds to the launched PID or an activation token that expires after
+      -- a second, and sandboxed apps (sidra runs under bubblewrap) hand the
+      -- window to a child, so neither ever matches.
+      --
+      -- Values tuned live with `hl.dsp.window.set_prop`. How well they read
+      -- depends on how bright the wallpaper is; Mod+Alt+B's black
+      -- background is the escape hatch when one needs to be read closely.
+      local translucent = function(name, class)
+        hl.window_rule({ name = name, match = { class = class }, opacity = "0.95 0.5" })
+      end
+
+      translucent("sidra-translucent", "^[sS]idra$")
+
+      -- The fade between those two opacities. It inherits global's 0.8s
+      -- otherwise, which felt sluggish on every focus change; speed is in
+      -- tenths of a second. Only this leaf changes; open/close fades keep
+      -- global's timing.
+      hl.animation({ leaf = "fadeSwitch", enabled = true, speed = 5, bezier = "default" })
+
       ------------------------------------------------------------- workspaces
       -- sidra gets a workspace of its own, on the laptop panel, bound to
       -- Mod+0 below. Two keys in the rule, each load-bearing:

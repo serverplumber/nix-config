@@ -221,6 +221,39 @@ in
         matches = [ { app-id = "^[sS]idra$"; } ];
         open-on-workspace = "sidra";
       }
+
+      # Translucent group — mirrors `translucent(...)` in home/hyprland.nix,
+      # whose header explains the values. niri has one opacity per rule, not
+      # Hyprland's "<focused> <unfocused>" pair, so the pair is two rules
+      # over the same app-ids. When several rules set the same property the
+      # later one wins, so the unfocused rule must come second. To add an app,
+      # add it to both lists.
+      #
+      # Two differences from the Hyprland side that niri cannot express: no
+      # fullscreen exemption (there is no fullscreen matcher, so a
+      # fullscreened member stays at 0.95), and no fade. niri does not
+      # animate an opacity change, so focus switches it instantly where
+      # Hyprland takes fadeSwitch's 0.5s. Both checked against the v26.04
+      # window-rule and animation docs.
+      #
+      # `is-focused`, not `is-active`: every workspace keeps an active
+      # window, so an is-active=false rule would leave sidra opaque on its
+      # own workspace whenever focus moves to another monitor. is-focused
+      # also goes false while noctalia's launcher or a menu holds keyboard
+      # focus, which fades it then too.
+      {
+        matches = [ { app-id = "^[sS]idra$"; } ];
+        opacity = 0.95;
+      }
+      {
+        matches = [
+          {
+            app-id = "^[sS]idra$";
+            is-focused = false;
+          }
+        ];
+        opacity = 0.5;
+      }
     ];
 
     # Absolute store paths throughout: a compositor does not reliably inherit
