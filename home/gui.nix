@@ -579,7 +579,12 @@ in
     # an explicit background stay opaque, so legibility does not depend on
     # what is behind the window. It also needs the compositor to blend; niri
     # and Hyprland both do, Plasma's Wayland session does too.
-    settings.colors.alpha = 0.95;
+    settings.colors-dark.alpha = 0.95;
+    settings.colors-light.alpha = 0.95;
+
+    # Colours come from noctalia's foot template (modules/noctalia.nix). The
+    # theme file sets no alpha, so the two lines above still hold.
+    settings.main.include = "~/.config/foot/themes/noctalia";
   };
 
   # Double-clicking a text file opens helix in foot, rooted at that file's

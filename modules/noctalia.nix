@@ -186,6 +186,32 @@
             type = "ics";
           };
         };
+
+        # Render the palette into foot and helix, so both follow the shell's
+        # theme. Each half needs a matching line elsewhere, because noctalia's
+        # way of switching an app over to its theme does not work here:
+        #
+        #   - foot's template ends with a script that adds an `include=` to
+        #     foot.ini. foot.ini is a home-manager link into the store, so the
+        #     script cannot write it. home/gui.nix declares the include, and
+        #     the script sees it and leaves the file alone.
+        #   - helix's template only writes themes/noctalia.toml; nothing
+        #     selects it. home/dev.nix sets `theme = "noctalia"`.
+        #
+        # The helix theme sets `ui.background = "none"`, which is what lets
+        # foot's alpha (home/gui.nix) show through the editor.
+        #
+        # Templates render only on a palette change. On a fresh home neither
+        # file exists until then; `noctalia msg templates-apply` forces a
+        # render. Neither app reloads on its own: new foot windows pick up the
+        # colours, running helix needs `:config-reload`.
+        theme.templates = {
+          enable_builtin_templates = true;
+          builtin_ids = [
+            "foot"
+            "helix"
+          ];
+        };
       };
     };
   };

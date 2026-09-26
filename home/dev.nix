@@ -86,7 +86,12 @@ in
     enableFishIntegration = true;
   };
 
-  programs.helix.enable = true;
+  programs.helix = {
+    enable = true;
+    # Written by noctalia's helix template (modules/noctalia.nix). Its
+    # transparent background is what lets foot's alpha show through.
+    settings.theme = "noctalia";
+  };
 
   home.packages = with pkgs; [
     ### forges
