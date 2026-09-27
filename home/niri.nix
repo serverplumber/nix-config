@@ -242,13 +242,20 @@ in
       # also goes false while noctalia's launcher or a menu holds keyboard
       # focus, which fades it then too.
       {
-        matches = [ { app-id = "^[sS]idra$"; } ];
+        matches = [
+          { app-id = "^[sS]idra$"; }
+          { app-id = "^(com\\.stremio\\.Stremio|[sS]tremio.*)$"; }
+        ];
         opacity = 0.95;
       }
       {
         matches = [
           {
             app-id = "^[sS]idra$";
+            is-focused = false;
+          }
+          {
+            app-id = "^(com\\.stremio\\.Stremio|[sS]tremio.*)$";
             is-focused = false;
           }
         ];

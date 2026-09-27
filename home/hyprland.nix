@@ -277,6 +277,7 @@ in
       end
 
       translucent("sidra-translucent", "^[sS]idra$")
+      translucent("stremio-translucent", "^(com\\.stremio\\.Stremio|[sS]tremio.*)$")
 
       -- The fade between those two opacities. It inherits global's 0.8s
       -- otherwise, which felt sluggish on every focus change; speed is in
