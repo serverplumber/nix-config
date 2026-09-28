@@ -5,10 +5,9 @@
   jq,
   findutils,
   coreutils,
-  # How many wallhaven-sourced images to keep around. Oldest-downloaded goes
-  # first once this is exceeded, so the pool tracks the current toplist
-  # instead of growing forever.
-  count ? 24,
+  # How many wallhaven-sourced images to keep: the top `count` of the current
+  # toplist, nothing else.
+  count ? 12,
   # wallhaven's `topRange` search param: 1d, 3d, 1w, 1M, 3M, 6M, 1y.
   topRange ? "1M",
   # wallhaven's `categories` bitmask: general / anime / people.
@@ -32,21 +31,32 @@
   # To use the third bit, create an API key at
   # https://wallhaven.cc/settings/account, keep it outside the nix store —
   # which is world-readable, so it must never be inlined here — and let the
-  # unit pass it in via $WALLHAVEN_API_KEY; see home/wallpapers.nix.
+  # unit pass it in via $WALLHAVEN_API_KEY; see the env file below.
   purity ? "110",
+  # What fits the monitors here: 3840x2400 (16:10) and 3840x2160 (16:9).
+  # Both are server-side filters, so no quota goes on portrait phone
+  # wallpapers. The floor is below the panels' native size because an exact
+  # 4K floor thins the toplist a lot, and 1.5x upscaling holds up fine.
+  ratios ? "16x9,16x10",
+  atleast ? "2560x1440",
 }:
 
-# Pulls wallhaven's toplist and drops it in ~/Pictures/Wallpapers, purely as a
-# static image pool for noctalia's own directory-based random rotation — see
+# Pulls wallhaven's toplist into the units' state directory, purely as a
+# static image pool for noctalia's own directory-based rotation — see
 # home/wallpapers.nix for why this exists instead of driving noctalia's
-# built-in Wallhaven browse panel.
+# built-in Wallhaven browse panel. pkgs/wallpaper-pool-link.nix links the
+# pool into ~/Pictures/Wallpapers.
 #
 # Every file this script writes or deletes is named `wallhaven_<id>.<ext>`,
-# matching the naming noctalia's own Wallhaven panel already uses for manual
+# matching the naming noctalia's own Wallhaven panel uses for manual
 # downloads. That prefix is also the safety boundary: this script only ever
-# touches files matching `wallhaven_*` in the target directory, so anything
-# dropped in by hand under any other name is never looked at, let alone
-# deleted.
+# touches files matching `wallhaven_*` in the pool, which it shares with the
+# reddit script.
+#
+# The unit in home/wallpapers.nix loads ~/.config/wallpaper-pool/env as its
+# environment. Put the API key there:
+#
+#   WALLHAVEN_API_KEY=...
 writeShellApplication {
   name = "wallhaven-wallpapers";
 
@@ -58,10 +68,12 @@ writeShellApplication {
   ];
 
   text = ''
-    dir="$HOME/Pictures/Wallpapers"
+    # $STATE_DIRECTORY comes from the unit's StateDirectory=; the fallback is
+    # the same path, for a run by hand.
+    dir="''${STATE_DIRECTORY:-''${XDG_STATE_HOME:-$HOME/.local/state}/wallpaper-pool-state}"
     mkdir -p "$dir"
 
-    api_url="https://wallhaven.cc/api/v1/search?sorting=toplist&topRange=${topRange}&purity=${purity}&categories=${categories}"
+    api_url="https://wallhaven.cc/api/v1/search?sorting=toplist&topRange=${topRange}&purity=${purity}&categories=${categories}&ratios=${ratios}&atleast=${atleast}"
 
     # Optional, and only meaningful for the third purity bit — see the
     # `purity` argument above. Appended rather than baked into api_url so the
@@ -72,15 +84,19 @@ writeShellApplication {
 
     response=$(curl -fsSL "$api_url")
 
-    # id + full-resolution image URL, one pair per line.
-    pairs=$(printf '%s' "$response" | jq -r '.data[] | "\(.id) \(.path)"')
+    # id + full-resolution image URL, one pair per line, top `count` only.
+    pairs=$(printf '%s' "$response" | jq -r '.data[:${toString count}][] | "\(.id) \(.path)"')
 
     while read -r id url; do
       [ -z "$id" ] && continue
       ext="''${url##*.}"
       target="$dir/wallhaven_''${id}.''${ext}"
       # Wallhaven ids are stable, so an existing file means "already have it".
-      if [ ! -e "$target" ]; then
+      # It is touched instead, so the mtime cap below evicts what fell off the
+      # toplist, not whatever happened to be downloaded first.
+      if [ -e "$target" ]; then
+        touch "$target"
+      else
         curl -fsSL -o "$target.part" "$url"
         mv "$target.part" "$target"
       fi

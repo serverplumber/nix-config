@@ -135,11 +135,11 @@
         # pointed at the curated pool; `directory` was left empty and so
         # resolved to the whole of ~/Pictures.
         #
-        # ~/Pictures/Wallpapers is filled by home/wallpapers.nix (the wallhaven
-        # toplist and subreddit pools, each capped separately and each owning
-        # its own filename prefix). noctalia expands the leading `~` itself,
-        # and this is
-        # the exact spelling its Settings UI writes, so the declared value and
+        # ~/Pictures/Wallpapers is filled by home/wallpapers.nix: numbered
+        # links into the wallhaven toplist and subreddit pools, reshuffled
+        # after every refresh. noctalia expands the leading `~` itself, and
+        # this is the exact spelling its Settings UI writes, so the declared
+        # value and
         # a UI-set one are byte-identical rather than one being an absolute
         # path that silently shadows the other.
         wallpaper = {
@@ -147,15 +147,23 @@
           directory_dark = "~/Pictures/Wallpapers";
           directory_light = "~/Pictures/Wallpapers";
 
-          # Rotate through the pool. Only `enabled` was actually set in the UI;
-          # interval_seconds = 1800, order = "random" and recursive = true are
+          # Rotate through the pool. interval_seconds = 1800 and recursive are
           # noctalia's defaults and are deliberately left undeclared rather
           # than restated here, so they track upstream.
+          #
+          # `alphabetical` is the sequential mode: it advances to the next
+          # name each cycle and wraps. The link names are already shuffled
+          # (pkgs/wallpaper-pool-link.nix), so walking them in order shows
+          # both sources mixed and every image once before any repeats, where
+          # `random` picks independently each cycle and repeats freely.
           #
           # Nothing else from the state file's [wallpaper] tree belongs in nix:
           # default/last/monitors.<output> hold the currently-displayed image
           # path and are rewritten on every rotation.
-          automation.enabled = true;
+          automation = {
+            enabled = true;
+            order = "alphabetical";
+          };
         };
 
         # Where the weather widget and the sunrise/sunset schedule think they

@@ -1,9 +1,11 @@
 { config, pkgs, ... }:
 let
-  # None of the three is in nixpkgs (they're one-off scripts, not projects) —
-  # see pkgs/{wallhaven,reddit}-wallpapers.nix and pkgs/wallpaper-blackout.nix.
+  # None of the four is in nixpkgs (they're one-off scripts, not projects) —
+  # see pkgs/{wallhaven,reddit}-wallpapers.nix and
+  # pkgs/wallpaper-{pool-link,blackout}.nix.
   wallhaven-wallpapers = pkgs.callPackage ../pkgs/wallhaven-wallpapers.nix { };
   reddit-wallpapers = pkgs.callPackage ../pkgs/reddit-wallpapers.nix { };
+  wallpaper-pool-link = pkgs.callPackage ../pkgs/wallpaper-pool-link.nix { };
 
   # noctalia isn't a nixpkgs attribute — it comes from the flake input's home
   # module — so the binary is passed in explicitly, the same way
@@ -33,27 +35,17 @@ let
       ExecStart = program;
       Restart = "on-failure";
       RestartSec = 30;
-      # Optional: `-` means "skip silently if absent", so both units work
-      # unchanged before this file exists. It carries the two settings that
-      # must not be in the repo, for two different reasons:
-      #
-      #   WALLHAVEN_API_KEY  a credential. /nix/store is world-readable, so
-      #                      inlining it would publish it to every user and
-      #                      every build on the machine.
-      #   REDDIT_SUBREDDIT   which subreddit to pull. Not secret, but this
-      #                      repo is public and what a machine fetches
-      #                      wallpapers from need not be.
-      #
-      #   mkdir -p ~/.config/wallpaper-pool
-      #   printf 'WALLHAVEN_API_KEY=...\nREDDIT_SUBREDDIT=...\n' \
-      #     > ~/.config/wallpaper-pool/env
-      #   chmod 0600 ~/.config/wallpaper-pool/env
-      #
-      # Each is handled independently: without the key wallhaven serves only
-      # its first two purity bits (see that package's `purity` argument for
-      # why that fails silently rather than erroring); without the subreddit
-      # the reddit unit logs and exits 0 rather than failing.
+      # WALLHAVEN_API_KEY and REDDIT_SUBREDDIT; see each package. `-` means
+      # "skip silently if absent".
       EnvironmentFile = "-%h/.config/wallpaper-pool/env";
+      # ~/.local/state/wallpaper-pool-state, passed in as $STATE_DIRECTORY:
+      # both pools' images and the reddit marks. Not plain `wallpaper-pool`:
+      # with ~/.config/wallpaper-pool present, systemd takes that for a
+      # pre-254 state directory and symlinks to it instead.
+      StateDirectory = "wallpaper-pool-state";
+      # Reshuffle the ~/Pictures/Wallpapers links after either pool changes.
+      # Skipped when ExecStart fails, which leaves the old links in place.
+      ExecStartPost = pkgs.lib.getExe wallpaper-pool-link;
     };
     Install.WantedBy = [ "default.target" ];
   };
