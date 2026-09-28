@@ -748,6 +748,44 @@ let
     '';
   };
 
+  # The agent has to outlive its window: Mod+Q on it, then Mod+A, should land
+  # back in the same conversation. A plain `claude` cannot do that — it is an
+  # interactive session, and it dies with the terminal. So it always runs as a
+  # background session (`claude --bg`, which starts one and exits without
+  # opening it) and the window is only ever an attached client
+  # (`claude attach`). Closing the window detaches; the session keeps running.
+  #
+  # Reattach first, start only when there is nothing to reattach to.
+  # `claude agents --json --cwd` scopes the list to this directory;
+  # foreground sessions show up in it too (kind "interactive", no `id`) and
+  # cannot be attached, hence the kind filter. Newest wins when there are
+  # several. The id is found by listing again after --bg rather than parsed
+  # out of its confirmation message, which is prose.
+  #
+  # $PWD rather than a project argument, so it is also the thing to type at
+  # the agent window's prompt after claude exits.
+  projectClaude = pkgs.writeShellApplication {
+    name = "project-claude";
+    runtimeInputs = [
+      config.programs.claude-code.package
+      pkgs.jq
+    ];
+    text = ''
+      newest() {
+        claude agents --json --cwd "$PWD" |
+          jq -r '[.[] | select(.kind == "background")] | max_by(.startedAt) | .id // empty'
+      }
+
+      id=$(newest) || id=
+      if [ -z "$id" ]; then
+        claude --bg "$@"
+        id=$(newest)
+      fi
+      [ -n "$id" ] || { echo "project-claude: no background session in $PWD" >&2; exit 1; }
+      exec claude attach "$id"
+    '';
+  };
+
   # The agent. Claude Code is a TUI, so this is a terminal too — the piece
   # that dies and gets respawned on its own, which is the whole reason these
   # are separate programs.
@@ -768,15 +806,15 @@ let
       # why: the larger one is that when claude exits — and it exits far more
       # often than an editor does, on /quit, on a crash, on a context limit —
       # the window survives with a prompt in the project directory instead of
-      # vanishing. Re-running it is then one `claude` typed at that prompt,
-      # rather than project-agent from somewhere else.
+      # vanishing. Re-running it is then one `project-claude` typed at that
+      # prompt, rather than project-agent from somewhere else.
       exec ${pkgs.foot}/bin/foot \
         --app-id=${appIds.agent} \
         --title="$name — claude" \
         --working-directory="$dir" \
         ${projectEnv}/bin/project-env "$dir" \
         ${config.programs.fish.package}/bin/fish \
-        -C '${startAsJob "${config.programs.claude-code.package}/bin/claude"}'
+        -C '${startAsJob "${projectClaude}/bin/project-claude"}'
     '';
   };
 
@@ -894,6 +932,7 @@ in
     projectWs
     projectEnv
     projectTerm
+    projectClaude
     projectAgent
     projectBrowser
     projectWorkspace
