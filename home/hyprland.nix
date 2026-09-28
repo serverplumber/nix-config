@@ -62,6 +62,7 @@ let
     ◆⌃⌥ + ←↓↑→            move window to monitor
 
     ◆\                    promote window into its own column
+    ◆space                keyboard layout: US / Canadian French
     ◆, / ◆.               consume / expel window from column
     ◆r / ◆⇧R              cycle column width presets
     ◆f                    maximize column (fit to screen width)
@@ -139,6 +140,13 @@ in
       ---------------------------------------------------------------- input
       hl.config({
         input = {
+          -- US plus Canadian French (CSA), toggled with Mod+Space. Same pair
+          -- as input.keyboard.xkb in home/niri.nix, whose comment has the
+          -- reasoning (why multix, where each accent sits on the Preonic).
+          -- resolve_binds_by_sym stays at its default (false), so every bind
+          -- keeps its US meaning while French is active.
+          kb_layout  = "us,ca",
+          kb_variant = ",multix",
           touchpad = {
             natural_scroll = true,
             tap_to_click   = true,
@@ -422,6 +430,10 @@ in
       -- Promotes the focused window into its own new column — the scrolling
       -- layout has no "split" concept, so togglesplit's old key was free.
       hl.bind(mod .. " + backslash", hl.dsp.layout("promote"))
+
+      -- niri: Mod+Space (switch-layout). No hl.dsp equivalent exists, so
+      -- this goes through hyprctl.
+      hl.bind(mod .. " + space", hl.dsp.exec_cmd("hyprctl switchxkblayout all next"))
 
       -- "slash" verified live via `hyprctl eval 'hl.bind("SUPER + SHIFT +
       -- slash", ...)'` — it's a valid Hyprland key name (xkbcommon keysym),

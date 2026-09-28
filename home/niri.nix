@@ -149,6 +149,33 @@ in
       natural-scroll = true;
     };
 
+    # US plus Canadian French, toggled with Mod+Space (binds below). Must
+    # match `kb_layout`/`kb_variant` in home/hyprland.nix.
+    #
+    # ca(multix) is xkb's Canadian Multilingual Standard (CSA), the closest
+    # xkb has to macOS's "Canadian French - CSA". It was picked over the
+    # default ca(fr) ("Canadian French - PC") because on the Preonic every
+    # French accent is then one press, or one layer plus one press, and
+    # never Shift and a layer together:
+    #   base   é (/)  è (')  à (\)
+    #   Raise  ^ dead ([)  ç (])  ù (ISO /, KC_NUBS)
+    #   Lower  ¨ dead ({)  Ç (})  Ù (ISO |)
+    # Lower's shifted keycodes carry Shift themselves, so ¨/Ç/Ù need no Shift
+    # held. ca(fr) leaves è/à/ù behind a dead grave, which is more presses
+    # for the commonest accents.
+    #
+    # Level 3 (AltGr, right Alt) and level 5 (right Ctrl) are not on a
+    # stock Preonic, which sends left Alt/Ctrl only. Nothing French needs
+    # them; œ, « » and the ASCII brackets moved there do.
+    #
+    # niri resolves letter binds against the first layout but punctuation
+    # against the active one: with French on, Mod+Shift+Slash fires from the
+    # ` key (where multix puts /), not from the / key.
+    input.keyboard.xkb = {
+      layout = "us,ca";
+      variant = ",multix";
+    };
+
     # Default column widths, in three tiers, against niri's 50% preset.
     # These mirror the `width(...)` rules in home/hyprland.nix one for one —
     # that file's header carries the reasoning for the tiers themselves and
@@ -542,6 +569,9 @@ in
       "Mod+Shift+V".action = switch-focus-between-floating-and-tiling;
 
       "Mod+W".action = toggle-column-tabbed-display;
+
+      # US <-> Canadian French (CSA), see input.keyboard.xkb above.
+      "Mod+Space".action = switch-layout "next";
 
       "Mod+O" = {
         repeat = false;
