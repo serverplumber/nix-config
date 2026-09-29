@@ -58,12 +58,16 @@ value is in the writing. Default to explaining, reviewing and verifying.
   feature branch and a PR are pure overhead — so when a commit *is* explicitly
   asked for, don't create a branch first, and don't ask whether to. Unrelated
   work still goes in separate commits.
-- Commit only what is already staged. Untracked files are untracked on purpose:
-  note that they exist rather than folding them in, even when the phrasing
-  ("commit the added files") seems to invite it.
+- "Commit" is shorthand for "stage and commit the work we just finished": stage
+  exactly the files that work changed or created, then commit. Don't stop to
+  report that nothing is staged. Everything else stays out — other modified
+  files, and untracked files the work didn't create, which are untracked on
+  purpose: note that they exist rather than folding them in, even when the
+  phrasing ("commit the added files") seems to invite it.
 - Commit messages: imperative subject line, then a body that explains *why* —
   what the alternatives were and why they lost, what constraint forced the
   shape. The diff already says what changed. No conventional-commit prefixes.
+  Write this in a succinct manner.
 - Every commit message ends by stating what was verified and what was not.
   "Verified: X, Y. Not verified: Z" — being explicit about the untested edge is
   the point, not a disclaimer.
