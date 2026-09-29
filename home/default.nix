@@ -12,6 +12,7 @@
     ./gui.nix
     ./niri.nix
     ./hyprland.nix
+    ./monitor-brightness.nix
     ./project-workspace.nix
     ./wallpapers.nix
     ./webapps.nix

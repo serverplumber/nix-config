@@ -60,6 +60,7 @@
       "dialout" # serial: qFlipper, 3D printer
       "scanner" # SANE — see modules/scanning.nix
       "lp" # scanner/printer access
+      "i2c" # DDC/CI monitor brightness — see modules/hardware-keys.nix
     ];
     shell = pkgs.fish;
 

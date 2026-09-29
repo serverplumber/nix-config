@@ -43,6 +43,8 @@ let
     ◆⌫                    lock (see modules/sdbackup.nix)
     ◆b                    lock + caffeine + SD backup (see modules/sdbackup.nix)
     ◆⌥b                   black background, rotation off — toggle (see home/wallpapers.nix)
+    ◆⌥7 / ◆⌥8             focused monitor dimmer / brighter
+    ◆⌥9 / ◆⌥0             focused window more / less transparent
 
     -- hjkl = focus, arrows = move · h/l = columns, j/k = window stack --
     ◆h / ◆l               focus column left / right
@@ -614,11 +616,38 @@ in
         { locked = true, repeating = true })
 
       hl.bind("XF86MonBrightnessUp",
-        hl.dsp.exec_cmd("${pkgs.brightnessctl}/bin/brightnessctl -e4 -n2 set 5%+"),
+        hl.dsp.exec_cmd("${pkgs.brightnessctl}/bin/brightnessctl -e4 -n2 set 1%+"),
         { locked = true, repeating = true })
       hl.bind("XF86MonBrightnessDown",
-        hl.dsp.exec_cmd("${pkgs.brightnessctl}/bin/brightnessctl -e4 -n2 set 5%-"),
+        hl.dsp.exec_cmd("${pkgs.brightnessctl}/bin/brightnessctl -e4 -n2 set 1%-"),
         { locked = true, repeating = true })
+
+      ---------------------------------------------------- window transparency
+      -- Mod+Alt+9 / Mod+Alt+0: focused window more / less see-through, in
+      -- 0.05 steps down to 0.2. Hyprland-only — niri has no runtime opacity,
+      -- only window rules. Mod+Alt+digit because browsers own Alt+digit;
+      -- 7/8 beside it are monitor brightness (home/monitor-brightness.nix).
+      -- Over Mod+Alt+B's black background this reads as a per-window dimmer.
+      --
+      -- set_prop takes only an absolute value and Lua cannot read a window's
+      -- opacity back, so the current value per window is remembered here,
+      -- keyed by address. A window the table has not seen starts from 1,
+      -- which for a translucent(...) member means the first press jumps from
+      -- its rule's value. Both the focused and unfocused opacity are set, so
+      -- the choice holds when focus moves away instead of reverting.
+      local windowAlpha = {}
+      local stepAlpha = function(delta)
+        local w = hl.get_active_window()
+        if not w then return end
+        local a = (windowAlpha[w.address] or 1.0) + delta
+        a = math.max(0.2, math.min(1.0, math.floor(a * 20 + 0.5) / 20))
+        windowAlpha[w.address] = a
+        local v = string.format("%.2f", a)
+        hl.dispatch(hl.dsp.window.set_prop({ prop = "opacity", value = v }))
+        hl.dispatch(hl.dsp.window.set_prop({ prop = "opacity_inactive", value = v }))
+      end
+      hl.bind(mod .. " + ALT + 9", function() stepAlpha(-0.05) end, { repeating = true })
+      hl.bind(mod .. " + ALT + 0", function() stepAlpha(0.05) end, { repeating = true })
 
       hl.bind("XF86AudioNext",  hl.dsp.exec_cmd("${pkgs.playerctl}/bin/playerctl next"),       { locked = true })
       hl.bind("XF86AudioPause", hl.dsp.exec_cmd("${pkgs.playerctl}/bin/playerctl play-pause"), { locked = true })

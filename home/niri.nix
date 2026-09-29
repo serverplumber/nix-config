@@ -626,11 +626,11 @@ in
 
       "XF86MonBrightnessUp" = {
         allow-when-locked = true;
-        action = spawn "${pkgs.brightnessctl}/bin/brightnessctl" "--class=backlight" "set" "+10%";
+        action = spawn "${pkgs.brightnessctl}/bin/brightnessctl" "--class=backlight" "set" "+1%";
       };
       "XF86MonBrightnessDown" = {
         allow-when-locked = true;
-        action = spawn "${pkgs.brightnessctl}/bin/brightnessctl" "--class=backlight" "set" "10%-";
+        action = spawn "${pkgs.brightnessctl}/bin/brightnessctl" "--class=backlight" "set" "1%-";
       };
     };
   };
