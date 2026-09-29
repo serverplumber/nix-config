@@ -22,6 +22,10 @@ let
   # that has to change, and config.toml (a read-only store symlink) cannot be
   # touched anyway.
   stateFile = "$HOME/.local/state/noctalia/settings.toml";
+
+  # Where to pick up again on restore: the wallpaper that was up when the
+  # background went black.
+  resumeFile = "\${XDG_STATE_HOME:-$HOME/.local/state}/wallpaper-blackout-resume";
 in
 
 # Toggle: black, non-rotating background ⇄ the normal rotating wallpaper pool.
@@ -51,6 +55,7 @@ writeShellApplication {
   text = ''
     black=${black}
     state="${stateFile}"
+    resume="${resumeFile}"
 
     [ -f "$state" ] || { echo "no noctalia state file at $state" >&2; exit 1; }
 
@@ -70,21 +75,44 @@ writeShellApplication {
     }
 
     # The current wallpaper path is the toggle state — no side-car state file
-    # to go stale or to disagree with what is actually on screen.
+    # to go stale or to disagree with what is actually on screen. The resume
+    # file below only says where to pick up, never which way to toggle.
     #
     # One wrinkle: $black is a store path, so a rebuild that changes the image
     # changes the path. Pressing the key while blacked out under an old path
     # therefore re-blacks with the new one instead of restoring, and the press
     # after that restores. Self-correcting, and not worth a state file.
-    if [ "$(noctalia msg wallpaper-get)" = "$black" ]; then
+    current=$(noctalia msg wallpaper-get)
+    if [ "$current" = "$black" ]; then
       set_automation true false
-      # A fresh random pick rather than the wallpaper that was up before:
-      # the pool is capped and refreshed nightly, so a remembered path is
-      # quite likely to have been evicted by the time it is restored.
-      noctalia msg wallpaper-random
+      # Restore steps to the wallpaper after the one blacked out, not back
+      # to it: the key doubles as "skip this one". `next` needs a current
+      # wallpaper inside the rotation to step from, and black is not, hence
+      # setting the remembered one first.
+      #
+      # The remembered path survives a nightly refresh: a pool wallpaper is
+      # remembered as its `pool-NN` link, and the numbers are recreated on
+      # every relink (pkgs/wallpaper-pool-link.nix), only pointing at other
+      # images. Only a pool that shrank below that number, or a saved file
+      # deleted meanwhile, falls back to a random pick.
+      prev=$(cat "$resume" 2>/dev/null || true)
+      if [ -n "$prev" ] && [ -e "$prev" ]; then
+        noctalia msg wallpaper-set "$prev"
+        noctalia msg wallpaper-next
+      else
+        noctalia msg wallpaper-random
+      fi
+      rm -f "$resume"
       echo "wallpaper rotation on"
     else
       set_automation false true
+      # Not when the current one is an older build's black (the wrinkle
+      # above): that is no place to resume from, and the path remembered on
+      # the way into it is still the right one.
+      if [[ $current != /nix/store/* ]]; then
+        mkdir -p "$(dirname "$resume")"
+        printf '%s\n' "$current" > "$resume"
+      fi
       noctalia msg wallpaper-set "$black"
       echo "background black, rotation off"
     fi

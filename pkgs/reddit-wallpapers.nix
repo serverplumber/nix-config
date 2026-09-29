@@ -4,6 +4,7 @@
   curl,
   xmlstarlet,
   file,
+  attr,
   findutils,
   coreutils,
   # How many reddit-sourced images to keep, and how many new ones a run
@@ -65,6 +66,13 @@
 # outside `reddit_*` in the target directory is ever read or removed, so the
 # two pools cannot evict each other's files.
 #
+# Each kept image also carries its post title and permalink as extended
+# attributes (the freedesktop `user.dublincore.title` and
+# `user.xdg.origin.url`), for pkgs/wallpaper-save.nix to name a saved copy by.
+# Attributes rather than a `reddit_<id>.title` sidecar because the cap below
+# counts every `reddit_*` file, and because they are deleted with the image,
+# so nothing else ever needs pruning.
+#
 # The unit in home/wallpapers.nix loads ~/.config/wallpaper-pool/env as its
 # environment. Put the subreddit there:
 #
@@ -76,6 +84,7 @@ writeShellApplication {
     curl
     xmlstarlet
     file
+    attr
     findutils
     coreutils
   ];
@@ -107,8 +116,9 @@ writeShellApplication {
     pages=0
     fetched=0
 
-    # One `<id> <image url or ->` line per post, newest first. $1 is the id to
-    # page past, or empty for the top of the listing.
+    # One `<id> <image url or -> <title>` line per post, newest first. The
+    # title goes last because it is the one field with spaces in it. $1 is
+    # the id to page past, or empty for the top of the listing.
     #
     # reddit answers a bare or spoofed-browser User-Agent with 429 fairly
     # readily. A descriptive one is what its API docs ask for, and the unit's
@@ -125,17 +135,22 @@ writeShellApplication {
       feed=$(curl -fsSL -A "$agent" "$url") || return
       # The image link only exists inside the entry's escaped HTML, so a
       # regex is unavoidable for that layer. normalize-space keeps each entry
-      # on one line. `|| true` because xmlstarlet exits 1 on an empty page.
+      # on one line and turns tabs into spaces, which makes tab a safe field
+      # separator. The title is last so an empty one cannot pull the content
+      # into its place. -T (text output) so the title comes out as `&`, not
+      # `&amp;`. `|| true` because xmlstarlet exits 1 on an empty page.
       # Galleries, video and text posts have no direct link and come out as
       # `-`: still seen, never kept.
+      local tab=$'\t'
       printf '%s' "$feed" \
-        | { xmlstarlet sel -N a=http://www.w3.org/2005/Atom \
-              -t -m '//a:entry' -v 'a:id' -o ' ' -v 'normalize-space(a:content)' -n || true; } \
-        | while read -r tid content; do
+        | { xmlstarlet sel -T -N a=http://www.w3.org/2005/Atom \
+              -t -m '//a:entry' -v 'a:id' -o "$tab" -v 'normalize-space(a:content)' \
+              -o "$tab" -v 'normalize-space(a:title)' -n || true; } \
+        | while IFS=$'\t' read -r tid content title; do
             [[ $tid =~ ^t3_([a-z0-9]+)$ ]] || continue
             local img
             img=$(grep -oE 'https://i\.redd\.it/[A-Za-z0-9_-]+\.(jpe?g|png|webp)' <<< "$content" | head -n1 || true)
-            echo "''${BASH_REMATCH[1]} ''${img:--}"
+            echo "''${BASH_REMATCH[1]} ''${img:--} $title"
           done
     }
 
@@ -143,7 +158,7 @@ writeShellApplication {
     # A failed download counts as a rejection: a deleted image 404s forever,
     # and failing the unit over it would retry the same post five times.
     take() {
-      local id=$1 url=$2
+      local id=$1 url=$2 title=$3
       [ "$url" != - ] || return 1
       local target="$dir/reddit_$id.''${url##*.}"
       curl -fsSL -A "$agent" -o "$target.part" "$url" || { rm -f "$target.part"; return 1; }
@@ -157,6 +172,14 @@ writeShellApplication {
         && (( w >= ${toString minWidth} && h >= ${toString minHeight} )) \
         && (( w * 100 >= h * ${toString minAspect} && w * 100 <= h * ${toString maxAspect} )); then
         mv "$target.part" "$target"
+        # Base64 (`0s`) rather than the plain text form, which reads a title
+        # that happens to start with 0x or 0s as an encoding prefix. Best
+        # effort: a filesystem without user xattrs only costs the saved copy
+        # its title, and pkgs/wallpaper-save.nix falls back to the id.
+        if [ -n "$title" ]; then
+          setfattr -n user.dublincore.title -v "0s$(printf '%s' "$title" | base64 -w0)" "$target" || true
+        fi
+        setfattr -n user.xdg.origin.url -v "https://www.reddit.com/comments/$id" "$target" || true
       else
         rm -f "$target.part"
         return 1
@@ -173,12 +196,12 @@ writeShellApplication {
         out=$(fetch_page "$after")
         pages=$((pages + 1))
         [ -n "$out" ] || break
-        while read -r id url; do
+        while read -r id url title; do
           if (( 36#$id <= 36#$high )); then
             reached=1
             break
           fi
-          new+=("$id $url")
+          new+=("$id $url $title")
         done <<< "$out"
         after=''${out##*$'\n'}
         after=''${after%% *}
@@ -187,8 +210,8 @@ writeShellApplication {
       # the deepest page read and the mark are skipped for good. Only a
       # subreddit posting hundreds a day gets here.
       for ((i = ''${#new[@]} - 1; i >= 0 && fetched < ${toString count}; i--)); do
-        read -r id url <<< "''${new[i]}"
-        if take "$id" "$url"; then
+        read -r id url title <<< "''${new[i]}"
+        if take "$id" "$url" "$title"; then
           fetched=$((fetched + 1))
         fi
         high=$id
@@ -204,10 +227,10 @@ writeShellApplication {
       out=$(fetch_page "$after")
       pages=$((pages + 1))
       [ -n "$out" ] || break
-      while read -r id url; do
+      while read -r id url title; do
         (( fetched < ${toString count} )) || break
         [ -n "$high" ] || high=$id
-        if take "$id" "$url"; then
+        if take "$id" "$url" "$title"; then
           fetched=$((fetched + 1))
         fi
         low=$id

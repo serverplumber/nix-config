@@ -1,16 +1,18 @@
 { config, pkgs, ... }:
 let
-  # None of the four is in nixpkgs (they're one-off scripts, not projects) —
-  # see pkgs/{wallhaven,reddit}-wallpapers.nix and
-  # pkgs/wallpaper-{pool-link,blackout}.nix.
   wallhaven-wallpapers = pkgs.callPackage ../pkgs/wallhaven-wallpapers.nix { };
   reddit-wallpapers = pkgs.callPackage ../pkgs/reddit-wallpapers.nix { };
-  wallpaper-pool-link = pkgs.callPackage ../pkgs/wallpaper-pool-link.nix { };
 
   # noctalia isn't a nixpkgs attribute — it comes from the flake input's home
   # module — so the binary is passed in explicitly, the same way
   # modules/sdbackup.nix reaches for it.
+  wallpaper-pool-link = pkgs.callPackage ../pkgs/wallpaper-pool-link.nix {
+    noctalia = config.programs.noctalia.package;
+  };
   wallpaper-blackout = pkgs.callPackage ../pkgs/wallpaper-blackout.nix {
+    noctalia = config.programs.noctalia.package;
+  };
+  wallpaper-save = pkgs.callPackage ../pkgs/wallpaper-save.nix {
     noctalia = config.programs.noctalia.package;
   };
 
@@ -99,6 +101,7 @@ in
   # ***
 
   # Mod+Alt+B: black background, rotation off — and the same key back again.
+  # Mod+Ctrl+Alt+B: keep the current wallpaper (pkgs/wallpaper-save.nix).
   #
   # Alt+b rather than plain b because plain Mod+B is the SD-card backup run
   # (modules/sdbackup.nix) and stays that way.
@@ -123,16 +126,20 @@ in
       # actually pressed. Mod+Alt+b is a genuinely distinct bind from Mod+b,
       # so the two coexist without a duplicate-keybind error.
       "Mod+Alt+b".action = spawn "${pkgs.lib.getExe wallpaper-blackout}";
+      "Mod+Ctrl+Alt+b".action = spawn "${pkgs.lib.getExe wallpaper-save}";
     };
 
   # `extraConfig` is a `lines` option with no override mechanism, so this must
   # not collide with home/hyprland.nix or modules/sdbackup.nix — both of which
-  # append to this same option. "SUPER + ALT + b" is free in both: sdbackup
-  # owns plain "SUPER + b", and hyprland.nix owns "SUPER + ALT + Backspace".
+  # append to this same option. "SUPER + ALT + b" and "SUPER + CTRL + ALT + b"
+  # are free in both: sdbackup owns plain "SUPER + b", and hyprland.nix owns
+  # "SUPER + ALT + Backspace" and only h/j/k/l under CTRL + ALT.
   wayland.windowManager.hyprland.extraConfig = ''
 
     -------------------------------------------------------- wallpaper blackout
     -- Black, static background ⇄ the rotating pool — see home/wallpapers.nix.
     hl.bind("SUPER + ALT + b", hl.dsp.exec_cmd(${builtins.toJSON "${pkgs.lib.getExe wallpaper-blackout}"}))
+    -- Keep the current wallpaper out of the pool's eviction.
+    hl.bind("SUPER + CTRL + ALT + b", hl.dsp.exec_cmd(${builtins.toJSON "${pkgs.lib.getExe wallpaper-save}"}))
   '';
 }
