@@ -9,8 +9,29 @@ let
     inherit pkgs;
   };
 
+  # The desktop's look, read-only, for every app. Without these the apps
+  # can't see the theme they are told to use: nixpak writes /.flatpak-info,
+  # so GTK takes its settings from the portal, which names "Breeze" — and
+  # Breeze lives in the system profile, which the sandbox never sees. GTK3
+  # then drops the dark variant and falls back to light Adwaita, so
+  # LibreOffice's own Dark setting did nothing — measured 2026-09-29 by
+  # reading /proc/<pid>/root of a live instance (/run held only
+  # opengl-driver and user).
+  #
+  # Breeze alone is still light: the dark colours are the colors.css that
+  # Plasma writes into ~/.config/gtk-{3,4}.0, which Breeze's CSS reads by
+  # name. Theme, colours and icons are all public data — nothing in these
+  # dirs is worth hiding from the app.
+  desktopTheme = sloth: [
+    "/run/current-system/sw/share/themes"
+    "/run/current-system/sw/share/icons"
+    (sloth.concat' sloth.homeDir "/.config/gtk-3.0")
+    (sloth.concat' sloth.homeDir "/.config/gtk-4.0")
+  ];
+
   # Shared wrapper. Every app here gets: a Wayland socket, GPU, notifications,
-  # its own config dir — and NOTHING else from $HOME. No ~/.ssh, no ~/code, no
+  # its own config dir, the desktop theme (desktopTheme above) — and NOTHING
+  # else from $HOME. No ~/.ssh, no ~/code, no
   # ~/.aws. That is the entire point; nix does not give you this for free.
   #
   # `rw` and `ro` are FUNCTIONS of sloth, not lists. sloth only exists inside
@@ -91,7 +112,7 @@ let
                 # 2026-08-17.
                 tmpfs = [ "/tmp" ];
                 bind.rw = rw sloth;
-                bind.ro = ro sloth;
+                bind.ro = desktopTheme sloth ++ ro sloth;
               };
             };
         }
@@ -205,6 +226,19 @@ let
 
       # CUPS client config, so it knows which server to talk to.
       "/etc/cups"
+
+      # The colour scheme. KDE apps take their palette from the [Colors:*]
+      # groups of kdeglobals, and the ~/.config remap above means Okular only
+      # ever sees its own, which has none — so it drew default light Breeze.
+      # The host file goes in as the system-wide layer instead: /etc/xdg is on
+      # XDG_CONFIG_DIRS, KConfig cascades kdeglobals across those dirs, and
+      # anything Okular writes still lands in its own ~/.config copy on top.
+      # A bind over ~/.config/kdeglobals itself would be read-only and a
+      # file mount point, which is the EBUSY trap described above.
+      [
+        (sloth.concat' sloth.homeDir "/.config/kdeglobals")
+        "/etc/xdg/kdeglobals"
+      ]
     ];
   };
 
