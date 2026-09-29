@@ -492,6 +492,16 @@ in
       hl.bind(mod .. " + ALT + down", hl.dsp.window.move({ workspace = "e+1" }))
       hl.bind(mod .. " + ALT + up",   hl.dsp.window.move({ workspace = "e-1" }))
 
+      -- Mod+n opens a new empty workspace on the focused monitor, Mod+Alt+n
+      -- takes the window there. "emptym" is the lowest-numbered empty
+      -- workspace not pinned to another monitor, so it never jumps focus to
+      -- the other screen the way a Mod+[1-9] on a taken number does. It is
+      -- also the only way off sidra onto a fresh workspace: the 4-finger
+      -- swipe's create-new path only runs from a numbered workspace, and
+      -- from name:sidra it just slides sidra off-screen in place.
+      hl.bind(mod .. " + n",       hl.dsp.focus({ workspace = "emptym" }))
+      hl.bind(mod .. " + ALT + n", hl.dsp.window.move({ workspace = "emptym" }))
+
       ------------------------------------------------ geometry (Mod+Ctrl)
       -- hjkl resizes. Column width goes through the layout's own colresize,
       -- whose argument is a FRACTION OF SCREEN WIDTH — 0.1 is therefore the
