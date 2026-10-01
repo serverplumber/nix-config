@@ -111,7 +111,23 @@ let
                 # it uses /tmp for its single-instance IPC socket — measured
                 # 2026-08-17.
                 tmpfs = [ "/tmp" ];
-                bind.rw = rw sloth;
+                # Files picked outside the sandbox. /.flatpak-info makes these
+                # apps use the portal's file chooser, and the portal hands
+                # back a document-portal path (/run/user/$UID/doc/<id>/<name>)
+                # for every pick, even one inside a bind above — it can't
+                # tell what nixpak binds. Without the portal mount that path
+                # doesn't exist, so an Obsidian vault picked from the dialog
+                # failed to open — measured 2026-09-29. by-app/<appId> is
+                # the per-app view Flatpak mounts: only what was picked for
+                # this app, so the sandbox still sees nothing it wasn't
+                # handed.
+                bind.rw = [
+                  [
+                    (sloth.concat' sloth.runtimeDir "/doc/by-app/${appId}")
+                    (sloth.concat' sloth.runtimeDir "/doc")
+                  ]
+                ]
+                ++ rw sloth;
                 bind.ro = desktopTheme sloth ++ ro sloth;
               };
             };
