@@ -134,6 +134,14 @@ let
       (sloth.concat' sloth.homeDir "/Documents/obsidian_vault")
       (sloth.concat' sloth.homeDir "/.config/obsidian")
     ];
+    ro = _: [
+      # Chromium hits a FATAL "Not implemented" in Skia's font manager and
+      # dies with SIGTRAP at startup when fontconfig can't load its config.
+      # Same two-hop /etc chain as libreoffice's fonts bind below. Measured
+      # 2026-09-29 on electron 43.6.0.
+      "/etc/fonts"
+      "/etc/static/fonts"
+    ];
   };
 
   ### Signal — own data dir plus somewhere to save attachments. pulseAudio:
