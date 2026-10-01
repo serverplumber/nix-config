@@ -13,6 +13,20 @@
   # — helix is the editor here (home/dev.nix).
   environment.plasma6.excludePackages = with pkgs.kdePackages; [ kate ];
 
+  # kio-fuse can deadlock on its own mount: a Dolphin filename search from
+  # `/` walks into /run/user/$UID/kio-fuse-*, and the kioworkers kio-fuse
+  # spawns to answer those lookups block on the same mount. The stuck tasks
+  # sit in uninterruptible sleep until the FUSE connection is aborted, and
+  # until then every suspend fails to freeze user.slice — locking the whole
+  # session, lock screen included, for ~100s per attempt.
+  #
+  # It is only a bridge for handing remote KIO URLs to non-KDE apps as real
+  # paths; without it KIO falls back to a temporary local copy. It can't go
+  # through excludePackages (plasma6 lists it as required), but it is only
+  # ever started via its user unit (the D-Bus activation file names it in
+  # SystemdService=), so masking the unit is enough.
+  systemd.user.units."kio-fuse.service".enable = false;
+
   # SDDM is Plasma's own display manager and it DOES own login here, for all
   # three sessions — but it is enabled in modules/desktop.nix rather than
   # from this file, because it greets niri and Hyprland too and is not a
