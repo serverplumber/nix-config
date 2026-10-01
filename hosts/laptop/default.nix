@@ -17,6 +17,7 @@
     ../../modules/containers.nix
     ../../modules/network.nix
     ../../modules/scanning.nix
+    ../../modules/iphone.nix
     ../../modules/printing.nix
     ../../modules/nix-ld.nix
     ../../modules/backup.nix
