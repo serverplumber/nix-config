@@ -133,8 +133,75 @@ let
             };
         }
       );
+      launcher = if mode == "script" then pak.config.script else pak.config.env;
+      mainProgram = baseNameOf (pkgs.lib.getExe pak.config.script);
+
+      # A sloth value as a jq expression for the same path, so the revoke
+      # below resolves $HOME/$XDG_* exactly as the nixpak launcher does. An
+      # unset variable is an error, not an empty prefix — that would keep a
+      # bare "/Downloads" and match nothing, or worse, "" and match all.
+      slothToJq =
+        v:
+        if builtins.isString v then
+          builtins.toJSON v
+        else if v.type == "env" then
+          "($ENV.${v.key} // ${if v ? "or" then slothToJq v."or" else ''error("${v.key} unset")''})"
+        else if v.type == "concat" then
+          "(${slothToJq v.a} + ${slothToJq v.b})"
+        else
+          throw "slothToJq: unsupported sloth value ${v.type}";
+
+      # Host side of each rw bind ([ src dest ] pairs keep src). Only rw: a
+      # grant under a ro bind can carry write, which the bind withholds.
+      keep = map (b: if builtins.isList b then builtins.head b else b) (rw pak._module.args.sloth);
+
+      # Portal grants outlive the app: the permission store keeps them across
+      # restarts, so a file picked once stayed reachable indefinitely. On each
+      # launch, withdraw this app's grants for anything outside its own rw
+      # binds; inside them a grant reveals nothing the bind doesn't already.
+      # RevokePermissions rather than Delete, so the same file handed to a
+      # different app keeps working there.
+      #
+      # Paths come back as bytes and are compared after implode, which is
+      # exact for ASCII. A non-ASCII path never matches a keep prefix, so the
+      # error direction is revoking too much, never too little.
+      #
+      # Best effort: if the portal is unreachable the app still launches, and
+      # says so on stderr.
+      wrapper = pkgs.writeShellApplication {
+        name = mainProgram;
+        runtimeInputs = [
+          pkgs.systemd
+          pkgs.jq
+        ];
+        text = ''
+          portal=(org.freedesktop.portal.Documents /org/freedesktop/portal/documents org.freedesktop.portal.Documents)
+          revoke() {
+            local docs
+            docs=$(busctl --user --json=short --timeout=3 call "''${portal[@]}" List s ${appId} |
+              jq -r '[${pkgs.lib.concatMapStringsSep ", " slothToJq keep}] as $keep
+                | .data[0] | to_entries[]
+                | (.value | implode | rtrimstr("\u0000")) as $p
+                | select([$keep[] as $k | $p == $k or ($p | startswith($k + "/"))] | any | not)
+                | .key') || return
+            for doc in $docs; do
+              busctl --user --timeout=3 call "''${portal[@]}" RevokePermissions ssas "$doc" ${appId} \
+                4 read write grant-permissions delete
+            done
+          }
+          revoke || echo "${mainProgram}: could not revoke document-portal grants" >&2
+          exec ${launcher}/bin/${mainProgram} "$@"
+        '';
+      };
     in
-    if mode == "script" then pak.config.script else pak.config.env;
+    # hiPrio so the wrapper, not nixpak's launcher, is bin/<mainProgram>.
+    pkgs.buildEnv {
+      inherit (launcher) name;
+      paths = [
+        (pkgs.lib.hiPrio wrapper)
+        launcher
+      ];
+    };
 
   ### Obsidian — one vault directory, nothing else. Electron, and it indexes
   ### everything it can reach, so the narrower this is the better.
