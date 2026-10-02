@@ -4,6 +4,7 @@
   # enough to boot in a VM — see flake.nix.
   imports = [
     ../../modules/base.nix
+    ../../modules/workstation.nix
     ../../modules/desktop.nix
     ../../modules/mime.nix
     ../../modules/niri.nix

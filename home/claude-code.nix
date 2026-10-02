@@ -106,6 +106,25 @@ in
       command = "${github-mcp-server-gh-auth}/bin/github-mcp-server-gh-auth";
     };
 
+    # Live lookups against search.nixos.org and the home-manager/nix-darwin
+    # option docs, so package names and option paths get checked rather than
+    # recalled. No credentials and no local state. As of 3.0 it exposes just
+    # two tools, `nix` and `nix_versions`, both read-only.
+    mcpServers.nixos = {
+      type = "stdio";
+      command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
+    };
+
+    # Language server diagnostics after each edit, instead of waiting minutes
+    # for `just build` to find an undefined name or a parse error. It does not
+    # replace the build: a misspelled NixOS option is only caught by
+    # evaluating the configuration. Lands in the same synthesised plugin as
+    # the MCP servers above, as its .lsp.json.
+    lspServers.nix = {
+      command = "${pkgs.nixd}/bin/nixd";
+      extensionToLanguage.".nix" = "nix";
+    };
+
     # ~/.claude/CLAUDE.md — standing instructions for every session on this
     # machine, regardless of repo. Kept as a real markdown file rather than
     # a Nix string so it reads and diffs like prose.
@@ -295,6 +314,10 @@ in
         "mcp__plugin_hm_github__search_pull_requests"
         "mcp__plugin_hm_github__search_repositories"
         "mcp__plugin_hm_github__search_users"
+
+        # mcp-nixos has no write side at all.
+        "mcp__plugin_hm_nixos__nix"
+        "mcp__plugin_hm_nixos__nix_versions"
       ];
 
       hooks.PostToolUse = [
