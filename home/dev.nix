@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 let
   # See the JetBrains package comment below for what this works around.
   # Has to run as a postFixupHooks entry, not a plain postFixup string:
@@ -91,6 +91,73 @@ in
     # Written by noctalia's helix template (modules/noctalia.nix). Its
     # transparent background is what lets foot's alpha show through.
     settings.theme = "noctalia";
+  };
+
+  # On trial as the ACP host for Claude Code: the agent runs in a panel and
+  # its edits land as reviewable diffs in the buffer, not in a terminal.
+  #
+  # Settings stay mutable (the module default): home-manager merges these
+  # keys into settings.json on activation and Zed may write the rest, so
+  # tweaks made in the UI while trying it out are not refused. Anything
+  # worth keeping gets copied back here.
+  #
+  # No noctalia template exists for Zed, so it keeps a stock theme.
+  programs.zed-editor = {
+    enable = true;
+
+    # Nix syntax and LSP wiring. The language server itself is nixd from
+    # PATH (modules/workstation.nix); `!nil` stops the extension fetching
+    # nil as a fallback.
+    extensions = [ "nix" ];
+
+    userSettings = {
+      # Helix keybindings, so the editor's grammar is the one already in use.
+      # Implies vim_mode.
+      helix_mode = true;
+
+      buffer_font_family = "JetBrainsMono Nerd Font";
+
+      # The nix store, not Zed, decides the version.
+      auto_update = false;
+      telemetry = {
+        diagnostics = false;
+        metrics = false;
+      };
+
+      # The nixpkgs adapter rather than the one Zed fetches from npm at first
+      # use: pinned by the flake and nothing downloaded at runtime. Pointed at
+      # the same Claude Code that programs.claude-code installs, so the
+      # ~/.claude settings, permissions and hooks in ./claude-code.nix apply
+      # unchanged inside Zed.
+      agent_servers."Claude Code" = {
+        type = "custom";
+        command = "${pkgs.claude-agent-acp}/bin/claude-agent-acp";
+        env.CLAUDE_CODE_EXECUTABLE = "${config.programs.claude-code.finalPackage}/bin/claude";
+      };
+
+      languages.Nix = {
+        language_servers = [
+          "nixd"
+          "!nil"
+        ];
+        formatter.external.command = "${pkgs.nixfmt}/bin/nixfmt";
+      };
+
+      # Option completion from this flake's own evaluated configuration,
+      # rather than from a generic nixpkgs. Evaluated lazily by nixd on
+      # first request; a broken flake only costs completion, not the editor.
+      lsp.nixd.settings =
+        let
+          flake = ''(builtins.getFlake "${config.home.homeDirectory}/code/nix-config")'';
+        in
+        {
+          nixpkgs.expr = "import ${flake}.inputs.nixpkgs { }";
+          options = {
+            nixos.expr = "${flake}.nixosConfigurations.laptop.options";
+            home-manager.expr = "${flake}.homeConfigurations.stablefly.options";
+          };
+        };
+    };
   };
 
   home.packages = with pkgs; [
