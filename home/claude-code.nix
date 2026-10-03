@@ -77,9 +77,9 @@ let
     '';
   };
 
-  # The same for markdown, with the rumdl settings Helix formats with
-  # (programs.helix in ./dev.nix), so a file Claude wrote does not reflow
-  # the next time it is saved in the editor. Lint findings rumdl cannot fix
+  # The same for markdown. No -c: rumdl reads the same user config Helix
+  # formats with (./dev.nix), so a file Claude wrote does not reflow the
+  # next time it is saved in the editor. Lint findings rumdl cannot fix
   # still exit 0 and are dropped; only a real failure is reported.
   claude-rumdl-hook = pkgs.writeShellApplication {
     name = "claude-rumdl-hook";
@@ -94,7 +94,7 @@ let
         *) exit 0 ;;
       esac
       [ -f "$file" ] || exit 0
-      if ! err=$(rumdl fmt -c 'MD013.line-length = 75' -c 'MD013.reflow = true' "$file" 2>&1); then
+      if ! err=$(rumdl fmt "$file" 2>&1); then
         jq -nc --arg m "rumdl failed on $file: $err" '{systemMessage: $m}'
       fi
     '';
