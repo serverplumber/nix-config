@@ -76,6 +76,77 @@ let
       fi
     '';
   };
+
+  # The same for markdown, with the rumdl settings Helix formats with
+  # (programs.helix in ./dev.nix), so a file Claude wrote does not reflow
+  # the next time it is saved in the editor. Lint findings rumdl cannot fix
+  # still exit 0 and are dropped; only a real failure is reported.
+  claude-rumdl-hook = pkgs.writeShellApplication {
+    name = "claude-rumdl-hook";
+    runtimeInputs = [
+      pkgs.jq
+      pkgs.rumdl
+    ];
+    text = ''
+      file=$(jq -r '.tool_response.filePath // .tool_input.file_path // empty')
+      case "$file" in
+        *.md) ;;
+        *) exit 0 ;;
+      esac
+      [ -f "$file" ] || exit 0
+      if ! err=$(rumdl fmt -c 'MD013.line-length = 75' -c 'MD013.reflow = true' "$file" 2>&1); then
+        jq -nc --arg m "rumdl failed on $file: $err" '{systemMessage: $m}'
+      fi
+    '';
+  };
+
+  # And for Python: ruff's safe fixes, then its formatter, on ruff's defaults.
+  # No -c here, so a project's own pyproject.toml / ruff.toml still governs.
+  #
+  # Unlike the two above, this one also reports: the Python language-server
+  # slot belongs to ty (below), and Claude Code allows one server per
+  # extension, so ruff's lint findings have no other way back. Whatever
+  # survives --fix goes to the model as additionalContext, the way a
+  # diagnostic would. Exit 1 from `ruff check` means exactly that; exit 2,
+  # or a formatter failure (a syntax error mid-edit), is a real failure and
+  # goes to the user as a systemMessage, as nixfmt's does.
+  claude-ruff-hook = pkgs.writeShellApplication {
+    name = "claude-ruff-hook";
+    runtimeInputs = [
+      pkgs.jq
+      pkgs.ruff
+    ];
+    text = ''
+      file=$(jq -r '.tool_response.filePath // .tool_input.file_path // empty')
+      case "$file" in
+        *.py | *.pyi) ;;
+        *) exit 0 ;;
+      esac
+      [ -f "$file" ] || exit 0
+
+      findings="" failure=""
+      rc=0
+      out=$(ruff check --fix --quiet --output-format concise "$file" 2>&1) || rc=$?
+      case $rc in
+        0) ;;
+        1) findings=$out ;;
+        *) failure=$out ;;
+      esac
+      if ! out=$(ruff format --quiet "$file" 2>&1); then
+        failure="''${failure:+$failure$'\n'}$out"
+      fi
+
+      [ -n "$findings$failure" ] || exit 0
+      jq -nc --arg f "$file" --arg findings "$findings" --arg failure "$failure" '
+        {}
+        + (if $findings != "" then {hookSpecificOutput: {
+             hookEventName: "PostToolUse",
+             additionalContext: "ruff findings left after --fix:\n\($findings)"}}
+           else {} end)
+        + (if $failure != "" then {systemMessage: "ruff failed on \($f): \($failure)"}
+           else {} end)'
+    '';
+  };
 in
 {
   # Claude Code itself was a plain entry in ./cli.nix until this file existed.
@@ -123,6 +194,24 @@ in
     lspServers.nix = {
       command = "${pkgs.nixd}/bin/nixd";
       extensionToLanguage.".nix" = "nix";
+    };
+
+    # ty, Astral's type checker, for what ruff cannot see: wrong types,
+    # missing attributes, bad call signatures. Chosen over basedpyright for
+    # speed, which is what matters in a server consulted after every edit.
+    # Claude Code routes each extension to a single server and logs a
+    # conflict for a second claimant, so ruff cannot also sit here; its lint
+    # findings come back through claude-ruff-hook instead.
+    #
+    # Imports resolve against the project's .venv. A project with no
+    # environment built yet will show unresolved-import errors until it has.
+    lspServers.python = {
+      command = "${pkgs.ty}/bin/ty";
+      args = [ "server" ];
+      extensionToLanguage = {
+        ".py" = "python";
+        ".pyi" = "python";
+      };
     };
 
     # ~/.claude/CLAUDE.md — standing instructions for every session on this
@@ -328,6 +417,18 @@ in
               type = "command";
               command = "${claude-nixfmt-hook}/bin/claude-nixfmt-hook";
               statusMessage = "nixfmt";
+              timeout = 30;
+            }
+            {
+              type = "command";
+              command = "${claude-rumdl-hook}/bin/claude-rumdl-hook";
+              statusMessage = "rumdl";
+              timeout = 30;
+            }
+            {
+              type = "command";
+              command = "${claude-ruff-hook}/bin/claude-ruff-hook";
+              statusMessage = "ruff";
               timeout = 30;
             }
           ];
