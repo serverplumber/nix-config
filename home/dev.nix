@@ -91,6 +91,35 @@ in
     # Written by noctalia's helix template (modules/noctalia.nix). Its
     # transparent background is what lets foot's alpha show through.
     settings.theme = "noctalia";
+    # .git/info/exclude hides files from git, not from the editor.
+    settings.editor.file-picker.git-exclude = false;
+
+    # rumdl lints and reflows markdown to the width on save. It is the only
+    # markdown server: setting the list replaces Helix's default of marksman
+    # and markdown-oxide, whose link navigation is for Obsidian vaults, which
+    # are edited in Obsidian. `rumdl server` accepts -c but ignores
+    # it, so the settings go in through configPath — which also overrides a
+    # repo's own .rumdl.toml, unlike the CLI's -c in ./claude-code.nix.
+    languages = {
+      language-server.rumdl = {
+        command = "${pkgs.rumdl}/bin/rumdl";
+        args = [ "server" ];
+        config.configPath = (pkgs.formats.toml { }).generate "rumdl.toml" {
+          MD013 = {
+            line-length = 75;
+            reflow = true;
+          };
+        };
+      };
+      language = [
+        {
+          name = "markdown";
+          text-width = 75;
+          auto-format = true;
+          language-servers = [ "rumdl" ];
+        }
+      ];
+    };
   };
 
   # On trial as the ACP host for Claude Code: the agent runs in a panel and
@@ -169,7 +198,6 @@ in
     shellcheck
     ruff
     mdformat
-    markdown-oxide # markdown LSP, pairs with helix
 
     ### task runner — this repo and krump both use it
     just
