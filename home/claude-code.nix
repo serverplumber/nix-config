@@ -1,5 +1,61 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 let
+  projectEnv = import ./project-env.nix {
+    inherit pkgs;
+    direnv = config.programs.direnv.package;
+  };
+
+  # Runs a Go tool in the project's own environment: `claude-go DIR CMD...`.
+  # Both gopls below and claude-gofmt-hook go through this, so the language
+  # server and the formatter always resolve the same Go.
+  #
+  # The project wins. Its direnv environment is loaded first, so a devShell
+  # that provides `go` and `gopls` puts both on PATH. nixpkgs' copies are then
+  # appended, not prepended: a fallback for a project whose shell has no gopls
+  # (or no Go at all, like a scratch file), never a replacement for one that
+  # does.
+  #
+  # The append happens in a second stage that runs *inside* the loaded
+  # environment, not before it. Appending first does not survive: when the
+  # caller already carries a DIRENV_DIFF (Claude Code started from a shell in
+  # some other direnv project), `direnv exec` reverts it by restoring PATH to
+  # its saved value, which drops anything added since. Found by testing — the
+  # one-stage version left a project whose shell failed to evaluate with no
+  # go and no gopls at all.
+  #
+  # The fallback is safe in one direction only. gopls breaks when it was
+  # compiled with an older Go than the project's — nixpkgs' own comment on
+  # the package says so, and builds it with buildGoLatestModule for that
+  # reason (Go 1.27.1 at time of writing, ahead of every project in ~/code).
+  # A project that moves past the pin's newest Go needs gopls in its own
+  # devShell; pkgs.gopls from that project's nixpkgs is built with the same
+  # pin's latest Go, which is the sync.
+  #
+  # No Go on the user's PATH comes from this: the fallback exists only inside
+  # these processes, so per-project toolchains stay the rule
+  # (package-migration.md §3).
+  #
+  # direnv's "loading ..." lines go to stderr, as does an .envrc's own stdout,
+  # so gopls' JSON-RPC stream on stdout stays clean. They cannot be silenced
+  # here: direnv 2.37 ignores DIRENV_LOG_FORMAT under `direnv exec`, empty or
+  # "-" (tested), so claude-gofmt-hook strips them from its messages instead.
+  claude-go-fallback = pkgs.writeShellApplication {
+    name = "claude-go-fallback";
+    text = ''
+      export PATH="$PATH:${pkgs.gopls}/bin:${pkgs.go}/bin"
+      exec "$@"
+    '';
+  };
+  claude-go = pkgs.writeShellApplication {
+    name = "claude-go";
+    runtimeInputs = [ projectEnv ];
+    text = ''
+      dir=''${1:?usage: claude-go <dir> <command> [args...]}
+      shift
+      exec project-env "$dir" ${claude-go-fallback}/bin/claude-go-fallback "$@"
+    '';
+  };
+
   # github-mcp-server needs a GitHub token in GITHUB_PERSONAL_ACCESS_TOKEN.
   # This repo holds no secrets and is not encrypted, so the token cannot be
   # written into the MCP config — and putting it in the shell environment
@@ -147,6 +203,38 @@ let
            else {} end)'
     '';
   };
+  # And for Go: `gopls imports` (add missing, drop unused), then `gopls
+  # format` (gofmt). gopls rather than goimports or a bare gofmt so the
+  # formatter is the same binary, against the same Go, as the language server
+  # — resolved per project through claude-go above, from the file's own
+  # directory, since a hook runs in the session's cwd and not the file's.
+  #
+  # Formatting only, unlike claude-ruff-hook: Go has its language server in
+  # the .go slot, so its diagnostics already come back that way. A failure
+  # (a syntax error mid-edit) goes to the user as a systemMessage, as
+  # nixfmt's does.
+  claude-gofmt-hook = pkgs.writeShellApplication {
+    name = "claude-gofmt-hook";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.jq
+      claude-go
+    ];
+    text = ''
+      file=$(jq -r '.tool_response.filePath // .tool_input.file_path // empty')
+      case "$file" in
+        *.go) ;;
+        *) exit 0 ;;
+      esac
+      [ -f "$file" ] || exit 0
+      dir=$(dirname "$file")
+      if ! err=$(claude-go "$dir" gopls imports -w "$file" 2>&1 &&
+        claude-go "$dir" gopls format -w "$file" 2>&1); then
+        err=$(sed '/direnv: /d' <<<"$err")
+        jq -nc --arg m "gopls failed to format $file: $err" '{systemMessage: $m}'
+      fi
+    '';
+  };
 in
 {
   # Claude Code itself was a plain entry in ./cli.nix until this file existed.
@@ -212,6 +300,19 @@ in
         ".py" = "python";
         ".pyi" = "python";
       };
+    };
+
+    # gopls for Go, through claude-go so it runs against the project's own Go
+    # and, when the devShell has one, the project's own gopls. "." is the
+    # server's working directory, which Claude Code sets to the project it was
+    # started in.
+    lspServers.go = {
+      command = "${claude-go}/bin/claude-go";
+      args = [
+        "."
+        "gopls"
+      ];
+      extensionToLanguage.".go" = "go";
     };
 
     # ~/.claude/CLAUDE.md — standing instructions for every session on this
@@ -430,6 +531,14 @@ in
               command = "${claude-ruff-hook}/bin/claude-ruff-hook";
               statusMessage = "ruff";
               timeout = 30;
+            }
+            {
+              type = "command";
+              command = "${claude-gofmt-hook}/bin/claude-gofmt-hook";
+              statusMessage = "gofmt";
+              # Longer than the others: the first gopls run in a module loads
+              # its packages, and a cold direnv may build the devShell.
+              timeout = 120;
             }
           ];
         }
