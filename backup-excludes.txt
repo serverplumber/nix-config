@@ -54,6 +54,16 @@
 .cargo/registry
 .gradle/caches
 .m2/repository
+.cache/go-build
+.cache/gopls
+.cache/goimports
+go/pkg/mod
+.nv/ComputeCache
+.stremio-server/stremio-cache
+# Electron app HTTP/GPU caches; the rest of the profile (cookies, storage) stays.
+.config/Sidra/Partitions/*/Cache
+.config/Sidra/Partitions/*/Code Cache
+.config/Sidra/Partitions/*/GPUCache
 
 # --- per-project build output ------------------------------------------------
 # Sources are in git; these are derived.
@@ -64,6 +74,7 @@
 **/.pytest_cache
 **/.mypy_cache
 **/.ruff_cache
+**/.dart_tool
 **/target/debug
 **/target/release
 **/result
@@ -75,6 +86,7 @@
 # re-pull on demand.
 .ollama/models
 .tabby/models
+.cache/lecturer
 
 # --- Bluefin-era leftovers ----------------------------------------------------
 # Flatpak per-app data; NixOS uses none of it (no flatpak — see CLAUDE.md).
