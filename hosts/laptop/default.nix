@@ -25,6 +25,7 @@
     ../../modules/sdbackup.nix
     ../../modules/cuda.nix
     ../../modules/caches.nix
+    ../../modules/inode-cache.nix
   ];
 
   services.sdbackup.enable = true;
