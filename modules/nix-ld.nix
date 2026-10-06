@@ -2,7 +2,7 @@
   # Recreates /lib64/ld-linux-x86-64.so.2, which NixOS otherwise does not have.
   # Anything Nix did not build — uv's python-build-standalone interpreters, pip
   # wheels with native code, downloaded IDE toolchains — hardcodes that path
-  # and simply will not execute without this. See O-13.
+  # and simply will not execute without this.
   programs.nix-ld.enable = true;
 
   # ***

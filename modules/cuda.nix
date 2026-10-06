@@ -1,7 +1,7 @@
 { ... }: {
   # DOCUMENTATION ONLY — this module sets nothing. It exists so the reasoning
-  # behind the CUDA choices has a home next to the other modules, and so
-  # O-12 has something to point at. The cache itself moved to
+  # behind the CUDA choices has a home next to the other modules. The cache
+  # itself moved to
   # modules/caches.nix; the package swap lives in home/cli.nix.
   #
   # ***
@@ -21,7 +21,7 @@
   # benefit on a machine that wants GPU acceleration in exactly one program.
   #
   # Instead home/cli.nix instantiates a second nixpkgs with cudaSupport for
-  # whisperx alone. See O-12.
+  # whisperx alone.
   #
   # ***
   #

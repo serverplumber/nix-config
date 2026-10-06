@@ -17,8 +17,7 @@
   ];
 
   # No flatpak, no homebrew, no AppImages on this machine. Everything the
-  # Bluefin install got from those channels is re-provisioned from nixpkgs —
-  # see package-migration.md for the mapping, reviewed separately.
+  # Bluefin install got from those channels is re-provisioned from nixpkgs.
 
   # Portals are configured once, in modules/desktop.nix — both compositors
   # need them for more than containers, so they don't belong here.

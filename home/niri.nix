@@ -65,7 +65,7 @@ in
       };
     };
 
-    # Deliberately NOT pinning the render device — see O-10a.
+    # Deliberately NOT pinning the render device.
     #
     # Left unset, niri renders on the Intel iGPU and the 4070 is powered only
     # when something needs it: a display attached to it, or an offloaded app.

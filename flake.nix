@@ -22,7 +22,7 @@
     hyprland.url = "github:hyprwm/Hyprland";
 
     # Apple Music desktop client. Ships its own flake, so this needs no
-    # packaging work — see package-migration.md §5c. Free (BlueOak-1.0.0),
+    # packaging work. Free (BlueOak-1.0.0),
     # unlike Cider, which went commercial: nixpkgs dropped the original
     # `cider` in July 2026 and `cider-2` is unfree.
     sidra = {
@@ -31,8 +31,8 @@
     };
 
     # Declarative bubblewrap sandboxing for nixpkgs packages — flatpak's
-    # security model without flatpak's separate store. See package-migration.md
-    # §1c for which apps are wrapped and why.
+    # security model without flatpak's separate store. The wrapped apps are
+    # listed in home/gui.nix.
     nixpak = {
       url = "github:nixpak/nixpak";
       inputs.nixpkgs.follows = "nixpkgs";

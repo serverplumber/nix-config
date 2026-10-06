@@ -92,7 +92,8 @@ in
 
     # systemd.enable is left at its default. It exports the session
     # environment into the systemd user manager; it does NOT start noctalia.
-    # noctalia comes up via hl.on("hyprland.start") below — see §7a.
+    # noctalia comes up via hl.on("hyprland.start") below, never through its
+    # own deprecated systemd unit.
 
     # ***
 
@@ -122,7 +123,7 @@ in
       -- Transcribed from the working GNOME config. Harmless in a VM: the
       -- connector names simply do not match anything and are ignored.
       --
-      -- eDP-1 gets HDR back (migration doc O-11): GNOME's monitors.xml had
+      -- eDP-1 gets HDR back: GNOME's monitors.xml had
       -- `colormode: bt2100` on the internal panel, and neither compositor
       -- carried that over on migration. cm = "hdredid" is Hyprland's PQ/HDR
       -- transfer function using the panel's own EDID-reported primaries

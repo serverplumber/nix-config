@@ -27,12 +27,6 @@
 # The cost of that choice is the mkForce on Mod+Backspace below. It is
 # signposted from home/niri.nix so the next person to wonder why their bind
 # doesn't take effect finds this file.
-#
-# ***
-#
-# This supersedes the note at bluefin-to-nixos-migration.md:1399, which said
-# the tool should live in a separate repo and that a Nix-native version must
-# not be built as a substitute. Superseded deliberately, not forgotten.
 
 let
   cfg = config.services.sdbackup;

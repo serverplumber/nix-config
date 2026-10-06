@@ -32,8 +32,7 @@ let
   # pin's latest Go, which is the sync.
   #
   # No Go on the user's PATH comes from this: the fallback exists only inside
-  # these processes, so per-project toolchains stay the rule
-  # (package-migration.md §3).
+  # these processes, so per-project toolchains stay the rule.
   #
   # direnv's "loading ..." lines go to stderr, as does an .envrc's own stdout,
   # so gopls' JSON-RPC stream on stdout stays clean. They cannot be silenced

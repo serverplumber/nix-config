@@ -1,6 +1,6 @@
-# restic --exclude-file. Shared by `just restic_init` (the one-shot
-# pre-migration run) and services.restic.backups.home (modules/backup.nix), so
-# the manual and automated backups can never disagree about what is skipped.
+# restic --exclude-file. Shared by sdbackup (modules/sdbackup.nix) and
+# services.restic.backups.home (modules/backup.nix), so the SD-card and
+# automated backups can never disagree about what is skipped.
 #
 # Rule for adding things here: exclude only what is RECONSTRUCTIBLE from
 # something else that is itself backed up or public. When in doubt, back it up.

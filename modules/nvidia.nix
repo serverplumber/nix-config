@@ -4,8 +4,7 @@
   #   01:00.0  NVIDIA AD106M [RTX 4070 Laptop]      -> PCI:1:0:0
   #
   # The Bluefin image was bluefin-dx-nvidia (driver 580.95.05), so the
-  # proprietary stack is what this machine has been running. Nothing in §5–§8
-  # of the runbook covered graphics at all — see O-6.
+  # proprietary stack is what this machine has been running.
 
   hardware.graphics = {
     enable = true;
@@ -56,13 +55,13 @@
   #
   # Corollary worth knowing: ANY nvidia-smi call wakes the GPU. Do not put a
   # GPU widget that polls it in the status bar, or the dGPU never suspends and
-  # O-10a's whole power argument evaporates.
+  # the power argument for PRIME offload evaporates.
   #
   # ***
   #
   # Required before the CUDA container images can see the GPU. Generates
   # /var/run/cdi/nvidia-container-toolkit.json, which podman consumes via
   # `--device nvidia.com/gpu=all`. CDI is also what makes this work under
-  # ROOTLESS podman — which is the only kind configured here (O-7).
+  # ROOTLESS podman — which is the only kind configured here.
   hardware.nvidia-container-toolkit.enable = true;
 }

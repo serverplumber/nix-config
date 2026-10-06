@@ -10,7 +10,7 @@
   util-linux,
   systemd,
   # The repo's single source of truth for exclusions, shared with
-  # `just restic_init` and modules/backup.nix (CLAUDE.md: never duplicate it).
+  # modules/backup.nix (CLAUDE.md: never duplicate it).
   # Passed in rather than referenced by relative path so this derivation stays
   # buildable on its own.
   excludeFile ? null,

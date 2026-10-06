@@ -159,7 +159,7 @@ let
   # great deal worse than a browser tab that renders badly.
   #
   # So Zoom gets the other half of the isolation story instead — the throwaway
-  # Brave *profile* already planned in package-migration.md's Tier 2 notes.
+  # Brave *profile*.
   # Separate profile rather than a private window on purpose: Chromium does not
   # persist camera/mic grants in incognito, so a private window would mean
   # re-authorising the devices at the start of every single meeting. The

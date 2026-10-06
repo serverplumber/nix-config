@@ -1,7 +1,7 @@
 { lib, ... }:
 let
-  # Single source of truth, shared with `just restic_init`. Read at eval time
-  # so the manual pre-migration run and the automated job can never disagree
+  # Single source of truth, shared with sdbackup (modules/sdbackup.nix). Read
+  # at eval time so the SD-card runs and the automated job can never disagree
   # about what is skipped.
   #
   # lib.splitString, not builtins.split — the latter interleaves regex-match
@@ -17,7 +17,7 @@ in
     #   - a NAS over SFTP:  "sftp:user@host:/srv/backup/laptop"
     #   - object storage:   "s3:s3.eu-central-1.amazonaws.com/bucket"
     #   - rclone anything:  "rclone:remote:path"
-    # Keep the external USB drive for the manual `just restic_init` run.
+    # Removable media is sdbackup's job (modules/sdbackup.nix).
     repository = "sftp:CHANGEME:/srv/backup/laptop";
 
     # ***

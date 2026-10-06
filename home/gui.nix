@@ -458,7 +458,7 @@ let
 in
 {
   home.packages = [
-    ### sandboxed via nixpak — see package-migration.md §1c
+    ### sandboxed via nixpak
     obsidian
     signal
     telegram
@@ -557,7 +557,7 @@ in
   ])
   ++ [
     # Apple Music, from the project's own flake rather than nixpkgs (it is not
-    # in nixpkgs at all). Free, unlike Cider — see package-migration.md §5c.
+    # in nixpkgs at all). Free, unlike Cider — see the input in flake.nix.
     #
     # Exposes bi-directional MPRIS over D-Bus as
     # org.mpris.MediaPlayer2.sidra, so the XF86AudioPlay/Next/Prev binds

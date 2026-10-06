@@ -352,7 +352,7 @@ do_backup() {  # do_backup <mountpoint> <card_id> <force>
     --one-file-system
   )
   # The exclude list is the repo's single source of truth, shared with
-  # `just restic_init` and modules/backup.nix. Never a second copy.
+  # modules/backup.nix. Never a second copy.
   #
   # --custom-ignorefile, NOT --glob-file. This matters more than it looks:
   # rustic's --glob-file is an ALLOWLIST, where a bare pattern *includes* and

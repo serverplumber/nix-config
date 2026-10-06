@@ -26,8 +26,7 @@ let
 in
 {
   # User CLI only — things you would want on a machine you never wrote code on.
-  # helix, uv and mdformat moved to ./dev.nix when the buckets in
-  # package-migration.md were applied. Nothing was dropped, only relocated.
+  # helix, uv and mdformat live in ./dev.nix.
 
   # This is NOT redundant with hosts/laptop/default.nix's
   # `programs.fish.enable` — that's the NixOS module, which only installs the
@@ -110,10 +109,11 @@ in
       #   whisperx --device cuda <file>
       #
       # Undocked this wakes the dGPU on first use and it suspends again after —
-      # that is O-10a working, not a fault.
+      # that is PRIME offload's fine-grained power management working, not a
+      # fault.
       cudaPkgs.whisperx
     ];
 
-  # §1a is now complete. zoxide, atuin, trash-cli, uutils-coreutils and
-  # stress-ng were dropped by decision, not overlooked.
+  # zoxide, atuin, trash-cli, uutils-coreutils and stress-ng were dropped by
+  # decision, not overlooked.
 }

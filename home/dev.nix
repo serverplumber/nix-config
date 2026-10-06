@@ -75,10 +75,9 @@ in
 {
   # Language-AGNOSTIC tooling. The distinction that matters: everything here
   # is wanted on $PATH in every project, which is exactly what disqualifies
-  # the compilers and runtimes in package-migration.md §3 — those belong in
-  # per-project devShells, not here.
+  # compilers and runtimes — those belong in per-project devShells, not here.
 
-  # The keystone. Without direnv the §3 plan (no global toolchains) is just an
+  # The keystone. Without direnv the no-global-toolchains rule is just an
   # inconvenience; with it, cd'ing into a repo is the whole workflow.
   programs.direnv = {
     enable = true;
@@ -285,7 +284,7 @@ in
 
     ### These are large and unfree. allowUnfree is already set for the NVIDIA
     ### driver, so nothing extra is needed — but if a downloaded IDE plugin or
-    ### bundled toolchain refuses to run, that is the nix-ld question in O-13,
-    ### not a packaging problem.
+    ### bundled toolchain refuses to run, that is a nix-ld question
+    ### (modules/nix-ld.nix), not a packaging problem.
   ];
 }

@@ -13,8 +13,8 @@ Companion to `docs/agent-context.md`. That file is about what an agent
 
 ## What we run
 
-Three sessions, chosen at the greeter (§7a of
-`bluefin-to-nixos-migration.md`), and the launch chain differs per session:
+Three sessions, chosen at the greeter, and the launch chain differs per
+session:
 
 | | starts as | session target | apps land in |
 |---|---|---|---|
@@ -113,9 +113,9 @@ gives you a resource view that is confidently wrong.
 **A third reason used to be recorded here and was wrong** — worth keeping,
 because the mistake is an easy one to make again. The comment read that
 uwsm "manages the session as systemd units, which is the opposite of the
-compositor-autostart model noctalia wants (§7a)". It is not the opposite:
+compositor-autostart model noctalia wants". It is not the opposite:
 uwsm does not stop `spawn-at-startup` / `exec-once` from starting the shell
-as a child of the compositor. What §7a forbids is noctalia's own
+as a child of the compositor. What is ruled out is noctalia's own
 *deprecated systemd unit* (`home/niri.nix:100`, `home/hyprland.nix:279`) —
 a different thing that uwsm neither needs nor provides. Two mechanisms were
 conflated because both have "systemd" in the description. Corrected in

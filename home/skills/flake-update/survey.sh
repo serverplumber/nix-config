@@ -66,8 +66,7 @@ have() { command -v "$1" >/dev/null 2>&1; }
 
 if ! have nix; then
   echo "!! no host nix on PATH. Everything below that evaluates or resolves is"
-  echo "!! unavailable; the justfile's podman route is for building, not for a"
-  echo "!! survey. Run this on the laptop."
+  echo "!! unavailable. Run this on the laptop."
   exit 1
 fi
 
@@ -151,10 +150,7 @@ cmd_inputs() {
 }
 
 # ── kludges ─────────────────────────────────────────────────────────────────
-# Code only. bluefin-to-nixos-migration.md and package-migration.md hold the
-# reasoning behind several of these, but they are a record of past decisions —
-# grepping them produces hits that cannot be removed. Read them for context on
-# a hit found here; never treat them as inventory.
+# Code only.
 cmd_kludges() {
   # An array, not a word-split string: `grep "${files[@]}"` is the only form
   # that survives a path with a space in it, and shellcheck is clean on it —

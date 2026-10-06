@@ -40,11 +40,11 @@ in
   };
 
   # hyprland.cachix.org lives in modules/caches.nix, together with the others,
-  # so the installer ISO and the container builder can reuse the same list.
+  # so the installer ISO can reuse the same list.
   # Without that cache this input compiles Hyprland and its 13 sub-inputs.
 
   # Hybrid NVIDIA: Hyprland needs more hand-holding here than niri does.
-  # See O-10 — these are the documented starting points, not a verified set.
+  # These are the documented starting points, not a verified set.
   environment.sessionVariables = {
     NIXOS_OZONE_WL = "1"; # Electron/Chromium apps on Wayland
   };

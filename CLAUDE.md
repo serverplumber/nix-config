@@ -10,19 +10,13 @@ NixOS** — this is no longer a from-scratch build. Current work is bug
 fixing and polish (desktop/greeter behavior, package corrections, shell
 integration, fonts, etc.), tracked via normal commits.
 
-`bluefin-to-nixos-migration.md` and `package-migration.md` are historical
-runbooks from the migration itself (disk layout, invariants, the
-package-mapping decisions). They're useful background on *why* things are
-built the way they are, but treat them as a record of past decisions, not
-as an active task list — don't infer that the migration is still in
-progress from their "status" headers.
+`CHANGELOG.md` records notable changes. The migration runbooks were
+removed; they remain in git history.
 
 ## Commands
 
-All commands go through `just` (see `justfile`). It transparently uses a
-host `nix` if present, otherwise runs `nix` inside a `ghcr.io/nixos/nix`
-podman container with a shared `nix-store` volume — so these work
-identically on and off NixOS.
+All commands go through `just` (see `justfile`), which calls the host
+`nix` directly.
 
 - `just verify` — `parse` + `fmt-check`; the fast pre-flight (works even
   without git or network).
@@ -99,19 +93,14 @@ this machine migrated from.
   Plasma are all installed; `modules/desktop.nix` owns the SDDM
   greeter/session wiring; noctalia is the shared shell (bar/launcher/
   notifications/lockscreen) for the two tiling sessions.
-- `modules/caches.nix` and `.nix-config` both configure extra binary
-  caches (Hyprland, noctalia, CUDA) and must be kept in sync **by hand** —
-  one is a NixOS module (configures the machine *being built*: laptop and
-  the installer ISO), the other is a plain `nix.conf` read by the
-  container builder (configures the machine *doing* the building). See the
-  comment block in `modules/caches.nix` for the three contexts that need
-  this.
+- `modules/caches.nix` holds every extra binary cache (Hyprland,
+  noctalia, CUDA), imported by both the laptop and the installer ISO.
 - `modules/backup.nix` reads `backup-excludes.txt` as its single source of
-  truth for restic exclusions, shared with the manual `just restic_init`
-  recipe — never duplicate the exclude list.
+  truth for restic exclusions, shared with `sdbackup` (`modules/sdbackup.nix`)
+  — never duplicate the exclude list.
 - nixpkgs is the only package source: no flatpak, homebrew, or AppImages.
-  Five apps are sandboxed via `nixpak` (see `package-migration.md` §1c for
-  which and why); browsers and hardware-facing apps deliberately aren't.
+  Five apps are sandboxed via `nixpak` (listed in `home/gui.nix`);
+  browsers and hardware-facing apps deliberately aren't.
 - `pkgs/` holds locally-packaged derivations not in nixpkgs (currently
   `ant-cli.nix`).
 - uid/gid for `stablefly` (1000) and the subuid/subgid ranges

@@ -72,7 +72,7 @@
     # allocate from 100000 instead. The 96 GiB rootless podman store on the
     # `home` subvolume has its overlay layers chowned into the 524288 range —
     # a different range means podman cannot read it without a full
-    # `podman system migrate` chown pass over all 96 GiB. Pin it. See O-7.
+    # `podman system migrate` chown pass over all 96 GiB. Pin it.
     subUidRanges = [
       {
         startUid = 524288;
@@ -103,7 +103,7 @@
 
   # Not deferrable: modules/nvidia.nix is imported unconditionally and
   # nvidiaPackages.stable is unfree, so the flake will not build without this.
-  # Which *applications* get unfree treatment is a separate call — O-8.
+  # Which *applications* get unfree treatment is a separate call.
   nixpkgs.config.allowUnfree = true;
 
   # Match the release actually installed. Never bump this afterwards.

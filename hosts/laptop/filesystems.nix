@@ -1,7 +1,6 @@
 let
-  # Read from /dev/disk/by-uuid on the running Bluefin system. Nothing in the
-  # procedure reformats either filesystem, so these are the same values the
-  # ISO will see — re-confirm with `blkid` per §2.3 anyway.
+  # Carried over from the Bluefin install; the migration reformatted neither
+  # filesystem.
   btrfsUUID = "6f8449a5-f6b6-4f60-adb1-c9b6c58cac3a"; # nvme1n1p3
   espUUID = "49A3-D385"; # nvme1n1p1
 
@@ -27,7 +26,7 @@ in
   };
 
   # /nix is a separate subvolume — NOT optional. It is in pathsNeededForBoot,
-  # so if §3 does not create it, this fails in stage 1 rather than at a prompt.
+  # so if the subvolume is missing, this fails in stage 1 rather than at a prompt.
   # Create it and declare it, or do neither. Do not mix.
   fileSystems."/nix" = {
     device = "/dev/disk/by-uuid/${btrfsUUID}";
