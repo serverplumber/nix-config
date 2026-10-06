@@ -65,9 +65,14 @@ die()  { printf 'error: %s\n' "$1" >&2; exit "${2:-1}"; }
 
 # Desktop notification. Never fatal: a missing notification daemon must not
 # take down a backup that is otherwise fine.
+#
+# Anything above low urgency never expires. Most of these fire from a lock
+# bind, behind the lockscreen, and a toast that times out there is gone
+# before anyone unlocks to read it. Low ("Backup started") may lapse.
 notify() {
-  local urgency="$1" title="$2" body="${3:-}"
-  notify-send --app-name=sdbackup --urgency="$urgency" "$title" "$body" 2>/dev/null || true
+  local urgency="$1" title="$2" body="${3:-}" expire=()
+  [ "$urgency" = low ] || expire=(--expire-time=0)
+  notify-send --app-name=sdbackup --urgency="$urgency" "${expire[@]}" "$title" "$body" 2>/dev/null || true
 }
 
 human_bytes() { numfmt --to=iec --suffix=B "${1:-0}" 2>/dev/null || echo "${1:-0}B"; }
