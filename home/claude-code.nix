@@ -373,25 +373,12 @@ in
       # a time, so the parallel-job collisions the worktree exists to prevent
       # don't happen.
       #
-      # `worktree.*` keys in this build (2.1.280), from its settings schema:
-      #
-      #   bgIsolation         "worktree" (default) — block edits in the main
-      #                       checkout until EnterWorktree; "none" — edit the
-      #                       working copy directly, and drop the
-      #                       worktree/commit/push paragraph from the prompt.
-      #                       This setting is the lowest-precedence source.
-      #                       The env var CLAUDE_BG_ISOLATION
-      #                       (worktree|none) overrides it, and so does a
-      #                       bgIsolation recorded for the job or agent.
-      #   baseRef             "fresh" (default) — branch from
-      #                       origin/<default-branch>; "head" — branch from
-      #                       local HEAD. Applies to --worktree, EnterWorktree
-      #                       and agent isolation.
-      #   symlinkDirectories  dirs symlinked from the main repo into each
-      #                       worktree (e.g. node_modules). None by default.
-      #   sparsePaths         sparse-checkout (cone) paths for new worktrees.
-      #   location            where the Desktop app puts SSH-session
-      #                       worktrees. The CLI doesn't read it.
+      # "worktree" (default) blocks edits in the main checkout until
+      # EnterWorktree; "none" edits the working copy directly and drops the
+      # worktree/commit/push paragraph from the prompt. This is the
+      # lowest-precedence source: the env var CLAUDE_BG_ISOLATION
+      # (worktree|none) overrides it, and so does a bgIsolation recorded for
+      # the job or agent.
       #
       # Read from the bundled source, not the docs. Checked 2026-10-06 against
       # claude-code 2.1.280. If an update renames the key, the default comes

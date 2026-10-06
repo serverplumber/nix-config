@@ -143,9 +143,12 @@ Deleting code whose comment you skimmed is how a fix gets re-broken.
 One standing check, whatever the survey says: `worktree.bgIsolation = "none"`
 in `home/claude-code.nix` relies on an undocumented Claude Code setting, and if
 the key is renamed it fails silently. Whenever `claude-code` moves, build the
-new one from the scratch copy and run `grep -c 'bgIsolation'` on its
-`bin/.claude-wrapped` (use `LC_ALL=C`, since it's a 200 MB binary). Zero hits
-means the key is gone. Then re-date the comment, or report the rename.
+new one from the scratch copy and run `LC_ALL=C grep -acF 'worktree?.bgIsolation'`
+on its `bin/.claude-wrapped`. Match that exact string, not bare `bgIsolation`.
+Jobs also record a `bgIsolation` field of their own, so the bare name would
+still match after the settings key was renamed. `worktree?.bgIsolation` is the
+read from settings: 2.1.280 has two, and zero means the key is gone. Then
+re-date the comment, or report the rename.
 
 Three kinds, three ways to check:
 
