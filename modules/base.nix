@@ -20,6 +20,9 @@
     btrfs-progs
     gptfdisk
 
+    # Reading the backup when this machine is the thing being restored.
+    restic
+
     # Diagnostics for the class of problem that leaves no graphical session
     # which unit failed, what is holding a mount, what hardware reports
     pciutils # lspci
