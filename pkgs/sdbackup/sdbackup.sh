@@ -317,12 +317,6 @@ cmd_run() {
     exit "$EX_NOT_DUE"
   fi
 
-  # Only one run at a time. flock rather than a pidfile so a killed run can
-  # never strand the lock.
-  state_init
-  exec 9>"$RUN_LOCK"
-  flock -n 9 || { log "another sdbackup run is in progress"; exit "$EX_BUSY"; }
-
   # Re-exec under systemd-inhibit so a lid close or the 600s idle-suspend
   # cannot cut the run in half. Belt and braces alongside caffeine: caffeine
   # relies on the compositor honouring an idle inhibitor, whereas swayidle
@@ -336,6 +330,14 @@ cmd_run() {
       --who=sdbackup --why="Offsite backup to SD card in progress" \
       "${reexec[@]}"
   fi
+
+  # Only one run at a time. flock rather than a pidfile so a killed run can
+  # never strand the lock. Taken only after the re-exec: fd 9 is not
+  # close-on-exec, so a lock taken before it stays held by systemd-inhibit and
+  # the re-exec'd child finds its own parent's lock and exits as busy.
+  state_init
+  exec 9>"$RUN_LOCK"
+  flock -n 9 || { log "another sdbackup run is in progress"; exit "$EX_BUSY"; }
 
   do_backup "$mnt" "$card_id" "$force"
 }
