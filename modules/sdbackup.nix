@@ -77,9 +77,14 @@ let
   # compositor idling out under the run; sdbackup additionally takes a
   # systemd-inhibit lock, because swayidle calls `systemctl suspend` directly
   # at 600s and only logind can refuse that.
+  #
+  # sdbackup runs in the foreground, so caffeine is released as soon as the run
+  # ends — successful, refused or failed alike. Otherwise a short run would
+  # leave the locked machine awake until the next unlock.
   lockAndBackup = lockThen "lock-backup" ''
     ${noctalia} msg caffeine-enable
     ${lib.getExe sdbackup} on-lock --backup || true
+    ${noctalia} msg caffeine-disable
   '';
 
   # Plasma needs its own pair. noctalia does not run under Plasma — it is
