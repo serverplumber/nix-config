@@ -140,6 +140,13 @@ workaround exists, what was measured, and when — that comment *is* the spec fo
 the removal test, and usually names the state you would have to reproduce.
 Deleting code whose comment you skimmed is how a fix gets re-broken.
 
+One standing check, whatever the survey says: `worktree.bgIsolation = "none"`
+in `home/claude-code.nix` relies on an undocumented Claude Code setting, and if
+the key is renamed it fails silently. Whenever `claude-code` moves, build the
+new one from the scratch copy and run `grep -c 'bgIsolation'` on its
+`bin/.claude-wrapped` (use `LC_ALL=C`, since it's a 200 MB binary). Zero hits
+means the key is gone. Then re-date the comment, or report the rename.
+
 Three kinds, three ways to check:
 
 - **Ticket-bearing** (`niri#3384`, `smithay#1143`, `noctalia#4360`): read the

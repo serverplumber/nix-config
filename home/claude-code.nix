@@ -363,6 +363,41 @@ in
       model = "opus";
       agentPushNotifEnabled = true;
 
+      # Background jobs edit the checkout they were started in, like any
+      # other session. The default puts a hard block on Edit/Write in the main
+      # checkout until the job calls EnterWorktree. It also adds a prompt
+      # telling the job to branch, and then to commit and push before it
+      # finishes. Every part of that contradicts ./claude-code.md: commit
+      # straight to main, commit only when asked, never push. Prose can't win,
+      # because the guard rejects the edit outright. Sessions here run one at
+      # a time, so the parallel-job collisions the worktree exists to prevent
+      # don't happen.
+      #
+      # `worktree.*` keys in this build (2.1.280), from its settings schema:
+      #
+      #   bgIsolation         "worktree" (default) — block edits in the main
+      #                       checkout until EnterWorktree; "none" — edit the
+      #                       working copy directly, and drop the
+      #                       worktree/commit/push paragraph from the prompt.
+      #                       This setting is the lowest-precedence source.
+      #                       The env var CLAUDE_BG_ISOLATION
+      #                       (worktree|none) overrides it, and so does a
+      #                       bgIsolation recorded for the job or agent.
+      #   baseRef             "fresh" (default) — branch from
+      #                       origin/<default-branch>; "head" — branch from
+      #                       local HEAD. Applies to --worktree, EnterWorktree
+      #                       and agent isolation.
+      #   symlinkDirectories  dirs symlinked from the main repo into each
+      #                       worktree (e.g. node_modules). None by default.
+      #   sparsePaths         sparse-checkout (cone) paths for new worktrees.
+      #   location            where the Desktop app puts SSH-session
+      #                       worktrees. The CLI doesn't read it.
+      #
+      # Read from the bundled source, not the docs. Checked 2026-10-06 against
+      # claude-code 2.1.280. If an update renames the key, the default comes
+      # back without any error, so flake-update re-checks it on every bump.
+      worktree.bgIsolation = "none";
+
       # Three tiers here, and the distinction matters:
       #
       #   deny  — never run, no prompt. Applying config, writing history.
