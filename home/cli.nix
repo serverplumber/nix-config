@@ -104,10 +104,6 @@ in
       # this one comes from the cudaSupport instance above, so faster-whisper's
       # ctranslate2 backend and the pyannote diarisation both reach the 4070.
       #
-      # Verify after first boot with:
-      #   python -c 'import torch; print(torch.cuda.is_available())'
-      #   whisperx --device cuda <file>
-      #
       # Undocked this wakes the dGPU on first use and it suspends again after —
       # that is PRIME offload's fine-grained power management working, not a
       # fault.
