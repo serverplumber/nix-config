@@ -8,8 +8,8 @@ since; treat version-specific details there as of that date. The agent
 console section is a sketch — nothing in it has been written or booted.
 
 Companion to `docs/agent-context.md`. That file is about what an agent
-*reads*; this one is about how the session and the things inside it get
-*started*, including the agent itself.
+_reads_; this one is about how the session and the things inside it get
+_started_, including the agent itself.
 
 ## What we run
 
@@ -36,8 +36,8 @@ Two facts that follow, both of which surprise people:
   escape it.
 
 Terminal: **foot, standalone — not server mode.** `programs.foot.server` is
-never set (`home/gui.nix:572`), there is no `foot-server.service`, and every
-launch path names the binary directly: `home/niri.nix:151`,
+never set (`home/gui.nix:572`), there is no `foot-server.service`, and
+every launch path names the binary directly: `home/niri.nix:151`,
 `home/hyprland.nix:316` and `:359`, the `helix-in-foot` wrapper at
 `home/gui.nix:626`, `modules/mime.nix:125`. One process per window. This
 matters more than it looks — see "Working directory" below.
@@ -66,7 +66,7 @@ Not by accident — both compositors ship it upstream.
 `niri.service` (installed by the niri module, verified 2026-09-22) is a
 complete session unit already:
 
-```
+```text
 BindsTo=graphical-session.target
 Before=graphical-session.target
 Wants=graphical-session-pre.target
@@ -92,9 +92,9 @@ But scopes only exist for apps launched through the wrapper. Getting full
 coverage here means rewriting every spawn in `home/niri.nix`,
 `home/hyprland.nix`, `modules/mime.nix` and the `helix-in-foot` wrapper —
 **and it still would not cover the launcher**, because noctalia execs
-`.desktop` entries itself. Omarchy could adopt uwsm cleanly because they had
-already funnelled everything through `bin/omarchy-launch-*`; we would be
-building that funnel first, for this one benefit.
+`.desktop` entries itself. Omarchy could adopt uwsm cleanly because they
+had already funnelled everything through `bin/omarchy-launch-*`; we would
+be building that funnel first, for this one benefit.
 
 Partial adoption is worse than neither: scopes for some apps and not others
 gives you a resource view that is confidently wrong.
@@ -116,7 +116,7 @@ uwsm "manages the session as systemd units, which is the opposite of the
 compositor-autostart model noctalia wants". It is not the opposite:
 uwsm does not stop `spawn-at-startup` / `exec-once` from starting the shell
 as a child of the compositor. What is ruled out is noctalia's own
-*deprecated systemd unit* (`home/niri.nix:100`, `home/hyprland.nix:279`) —
+_deprecated systemd unit_ (`home/niri.nix:100`, `home/hyprland.nix:279`) —
 a different thing that uwsm neither needs nor provides. Two mechanisms were
 conflated because both have "systemd" in the description. Corrected in
 `modules/hyprland.nix` on 2026-09-22.
@@ -135,18 +135,19 @@ works, then what ours would have to do differently.
 ### How Omarchy does it
 
 **The console** is `special:scratchpad` dressed up
-(`default/hypr/qconsole.lua`): `dim_special = 0.6` behind it, slide-from-top
-animation, and `on_created_empty` seeding it with `omarchy-agent`. The panel
-is sized *by workspace gaps* rather than a window rule, because window-rule
-size expressions resolve once at map time and go stale on a rescale — so it
-subscribes to monitor and workspace events and recomputes. That detail is
-the tell for how much care is in this file.
+(`default/hypr/qconsole.lua`): `dim_special = 0.6` behind it,
+slide-from-top animation, and `on_created_empty` seeding it with
+`omarchy-agent`. The panel is sized _by workspace gaps_ rather than a
+window rule, because window-rule size expressions resolve once at map time
+and go stale on a rescale — so it subscribes to monitor and workspace
+events and recomputes. That detail is the tell for how much care is in this
+file.
 
-**Starting** is a normalization table. No default agent ships; fourteen CLIs
-exist as lazy mise stubs, and `bin/omarchy-agent` maps each one's spelling
-of "don't stop to ask" and "here is a prompt":
+**Starting** is a normalization table. No default agent ships; fourteen
+CLIs exist as lazy mise stubs, and `bin/omarchy-agent` maps each one's
+spelling of "don't stop to ask" and "here is a prompt":
 
-```
+```text
 claude       → --permission-mode auto           prompt: -- "$prompt"
 codex        → --approve-for-me                 prompt: -- "$prompt"
 opencode     → --auto                           prompt: --prompt
@@ -159,10 +160,10 @@ Everything launches through `omarchy-launch-tui --app-id=org.omarchy.agent`
 target "the agent window" whichever agent you picked. Worth stealing
 outright if we ever build this; it costs nothing.
 
-**Context** arrives two ways. Ambient: `default/agents/skills/` is symlinked
-into six harness locations by `omarchy-provision-user`, looping over the
-directory so a third skill needs no edit. One-shot: `omarchy agent prompt
-"..."` seeds a session while keeping it interactive.
+**Context** arrives two ways. Ambient: `default/agents/skills/` is
+symlinked into six harness locations by `omarchy-provision-user`, looping
+over the directory so a third skill needs no edit. One-shot:
+`omarchy agent prompt "..."` seeds a session while keeping it interactive.
 
 **The crash path combines both, and is the best-designed piece.**
 `omarchy-crash-watch` follows the systemd-coredump journal and raises a
@@ -178,8 +179,8 @@ applied to a prompt: five facts inline, the method by reference, and a
 degradation path when the reference cannot be resolved.
 
 **Two things not to copy.** Every desktop-launched agent runs in
-bypass-permissions mode, and the Quake console starts one the first time you
-hit the key. And the skills are symlinks into a package-owned tree, so
+bypass-permissions mode, and the Quake console starts one the first time
+you hit the key. And the skills are symlinks into a package-owned tree, so
 `omarchy update` rewrites the instructions the agent is reading, without
 asking. The Nix equivalent — `home.file` symlinks into the store — looks
 identical and is not the same thing, because the content is pinned by the
@@ -187,8 +188,8 @@ flake and changes when you decide it does.
 
 ### Working directory
 
-Omarchy's `bin/omarchy-cmd-terminal-cwd` does `hyprctl activewindow` → pid →
-`pgrep -P` first child → `readlink /proc/$shell/cwd`, with a sanity check
+Omarchy's `bin/omarchy-cmd-terminal-cwd` does `hyprctl activewindow` → pid
+→ `pgrep -P` first child → `readlink /proc/$shell/cwd`, with a sanity check
 that the child's exe is in `/etc/shells`. It carries a kitty special-case,
 because kitty is one process for many windows and the PID walk finds "the
 most recently spawned shell anywhere" instead of the focused one.
@@ -210,7 +211,7 @@ version does not.
 
 The tempting next step after cwd is to lift `/proc/<pid>/environ` from the
 focused shell. **It does not do what it looks like it does.** That file is
-the snapshot taken at `exec`. direnv and `nix develop` mutate the *shell's*
+the snapshot taken at `exec`. direnv and `nix develop` mutate the _shell's_
 environment afterward and never write back to it. So a copy faithfully
 reproduces the login environment and silently omits the dev shell — the
 only part worth having.
@@ -222,28 +223,29 @@ shell has drifted into.
 
 ### Detaching
 
-Omarchy's agent dies with its window; the console *is* the process. To make
+Omarchy's agent dies with its window; the console _is_ the process. To make
 it survive, the agent must not be the window's child —
 `systemd-run --user --scope`, or a tmux session with the console as a view
 onto it.
 
-This is uwsm's per-app-scope idea applied at exactly one launch point, where
-we control the path and the benefit is concrete. **Take the technique, skip
-the session manager.** It is also the only part of the uwsm story that has a
-real use here.
+This is uwsm's per-app-scope idea applied at exactly one launch point,
+where we control the path and the benefit is concrete.
+**Take the technique, skip the session manager.** It is also the only part
+of the uwsm story that has a real use here.
 
-Once the agent is detached, "one agent at a time" becomes a UI choice rather
-than a constraint — both compositors take arbitrarily many named special
-workspaces, so `special:agent-<project>` is available later. Start with one
-anyway.
+Once the agent is detached, "one agent at a time" becomes a UI choice
+rather than a constraint — both compositors take arbitrarily many named
+special workspaces, so `special:agent-<project>` is available later. Start
+with one anyway.
 
 ### When the focused window is not a terminal
 
 Do not build per-app integration for this. Helix has no remote protocol to
-integrate with, and Helix runs *inside* foot regardless, so the real gap is
+integrate with, and Helix runs _inside_ foot regardless, so the real gap is
 browsers and GUI apps — and there the honest answer is that you do not want
 that app's context, you want the project you were last in. Track the
-last-focused terminal off the compositor's event socket and fall back to it.
+last-focused terminal off the compositor's event socket and fall back to
+it.
 
 For file-level context specifically, Helix sets the terminal title to the
 open file, so `hyprctl activewindow -j | jq .title` (or niri's
@@ -263,7 +265,7 @@ verified on this machine** — one command to check before relying on it.
 
 ## Rules for this document
 
-It records *decisions and their reasons*, and survey findings that informed
+It records _decisions and their reasons_, and survey findings that informed
 them. It does not restate what a module header already says — where the
 reason lives in `modules/*.nix`, this file points at the line.
 

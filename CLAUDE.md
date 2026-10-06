@@ -1,6 +1,7 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working
+with code in this repository.
 
 ## What this is
 
@@ -31,7 +32,7 @@ All commands go through `just` (see `justfile`), which calls the host
 - `just switch` — `nixos-rebuild switch` on the real machine. Applies to
   the whole system: home-manager is imported as a NixOS module, not used
   standalone, so there is no `home-manager` CLI on PATH and no home-only
-  apply. (`just home` still *builds* the home half on its own.)
+  apply. (`just home` still _builds_ the home half on its own.)
 - `just boot` — `nixos-rebuild boot`: stage for the next boot and touch
   nothing running. The **required** verb when the kernel or the nvidia
   driver moves; see "Updating" below.
@@ -57,7 +58,7 @@ succeeding, plus (for anything touching the desktop) actually booting
 `switch` is wrong whenever `kernel`, `kernel-modules` or `initrd` moved,
 and `just diff` exists to catch exactly that. Activation repoints
 `/run/opengl-driver` at the new userspace nvidia driver while the old
-kernel module stays loaded — it *cannot* be unloaded, `nvidia_drm` is
+kernel module stays loaded — it _cannot_ be unloaded, `nvidia_drm` is
 pinned by the running compositor. The result is `Driver/library version
 mismatch`: `nvidia-smi` dies, and
 `nvidia-container-toolkit-cdi-generator.service` (see `modules/nvidia.nix`)
@@ -75,17 +76,18 @@ this machine migrated from.
 
 ## Architecture
 
-- `flake.nix` defines four outputs sharing `commonModules` (`hosts/laptop`
-  + home-manager): `laptop` (real machine), `laptop-vm` (same config,
-  QEMU-friendly overrides inlined in `flake.nix`), `installer` (live ISO
-  carrying this flake), and standalone `homeConfigurations.stablefly`.
+- `flake.nix` defines four outputs sharing `commonModules`
+  (`hosts/laptop` + home-manager): `laptop` (real machine), `laptop-vm`
+  (same config, QEMU-friendly overrides inlined in `flake.nix`),
+  `installer` (live ISO carrying this flake), and standalone
+  `homeConfigurations.stablefly`.
 - `hosts/laptop/` — machine-specific: `default.nix` (portable — boots fine
   in the VM too) imports every module in `modules/`; `machine.nix` +
   `hardware-configuration.nix` + `filesystems.nix` + `boot.nix` are the
   real-disk-only parts, imported only by `nixosConfigurations.laptop`.
 - `modules/` — one NixOS module per concern (desktop, each compositor,
   audio, nvidia, containers, backup, caches, …). Each file's header comment
-  explains *why* it's shaped the way it is — read those before editing
+  explains _why_ it's shaped the way it is — read those before editing
   rather than guessing.
 - `home/` — home-manager config for the `stablefly` user, imported both
   under the NixOS config and standalone (`homeConfigurations.stablefly`).
@@ -96,8 +98,8 @@ this machine migrated from.
 - `modules/caches.nix` holds every extra binary cache (Hyprland,
   noctalia, CUDA), imported by both the laptop and the installer ISO.
 - `modules/backup.nix` reads `backup-excludes.txt` as its single source of
-  truth for restic exclusions, shared with `sdbackup` (`modules/sdbackup.nix`)
-  — never duplicate the exclude list.
+  truth for restic exclusions, shared with `sdbackup`
+  (`modules/sdbackup.nix`) — never duplicate the exclude list.
 - nixpkgs is the only package source: no flatpak, homebrew, or AppImages.
   Five apps are sandboxed via `nixpak` (listed in `home/gui.nix`);
   browsers and hardware-facing apps deliberately aren't.
