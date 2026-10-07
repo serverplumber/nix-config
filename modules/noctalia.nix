@@ -71,6 +71,9 @@
         # always uses palette.surface, so it follows the active theme.
         backdrop.enabled = true;
 
+        # Lock screen background shown unblurred.
+        lockscreen.blur_intensity = 0.0;
+
         # No session buttons on the lock screen: a locked machine offers a
         # password prompt and nothing else. This drops shutdown, reboot,
         # logout and suspend together — the setting is all-or-nothing, with
