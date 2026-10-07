@@ -7,6 +7,7 @@
     ../../modules/workstation.nix
     ../../modules/desktop.nix
     ../../modules/mime.nix
+    ../../modules/brave.nix
     ../../modules/niri.nix
     ../../modules/hyprland.nix
     ../../modules/plasma.nix
