@@ -100,6 +100,10 @@
             ])
             (_: {
               settings.show_session_buttons = false;
+              settings.background_opacity = 0.2;
+              settings.input_opacity = 0.2;
+              settings.show_login_button = false;
+              settings.show_unlock_hint = false;
             });
 
         # Bar layout, left section only: workspaces and nothing else. The
