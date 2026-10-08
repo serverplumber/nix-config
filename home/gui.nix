@@ -455,6 +455,33 @@ let
       "/etc/passwd"
     ];
   };
+
+  # Chromium's Wayland backend double-counts scale on Hyprland: it
+  # multiplies the legacy wl_output integer scale by the
+  # wp_fractional_scale_v1 value instead of treating them as the same
+  # measurement, so the whole UI renders ~2x too large (confirmed live —
+  # GTK/Qt apps read the compositor scale correctly, only Chromium-family
+  # browsers are affected). --disable-features=WaylandFractionalScaleV1
+  # makes it fall back to the legacy protocol, which is correct here since
+  # every monitor uses an integer scale (2) anyway. Upstream tracking:
+  # https://github.com/hyprwm/Hyprland/discussions/11627
+  vivaldi = pkgs.vivaldi.override {
+    commandLineArgs = "--disable-features=WaylandFractionalScaleV1";
+  };
+
+  greyscaleIcon = pkgs.callPackage ../pkgs/greyscale-icon.nix { };
+
+  # The browser's own logo in greyscale marks the private launcher.
+  privateWindow = name: exec: logo: {
+    inherit name exec;
+    icon = "${greyscaleIcon logo}";
+    genericName = "Private Web Browser";
+    terminal = false;
+    categories = [
+      "Network"
+      "WebBrowser"
+    ];
+  };
 in
 {
   home.packages = [
@@ -469,21 +496,9 @@ in
   ++ (with pkgs; [
     ### plain nixpkgs, NOT sandboxed — deliberate, see the note below
     brave
+    vivaldi # with the scale fix, defined above
 
-    # Chromium's Wayland backend double-counts scale on Hyprland: it
-    # multiplies the legacy wl_output integer scale by the
-    # wp_fractional_scale_v1 value instead of treating them as the same
-    # measurement, so the whole UI renders ~2x too large (confirmed live —
-    # GTK/Qt apps read the compositor scale correctly, only Chromium-family
-    # browsers are affected). --disable-features=WaylandFractionalScaleV1
-    # makes it fall back to the legacy protocol, which is correct here since
-    # every monitor uses an integer scale (2) anyway. Upstream tracking:
-    # https://github.com/hyprwm/Hyprland/discussions/11627
-    (vivaldi.override {
-      commandLineArgs = "--disable-features=WaylandFractionalScaleV1";
-    })
-
-    firefox
+    # firefox is installed system-wide, with its policies: modules/firefox.nix
 
     ### Tier 3 — sandboxing these would fight what they are for
     kdePackages.dolphin # needs to see all of $HOME; that IS the job
@@ -580,6 +595,21 @@ in
       "X-Sandboxed"
     ];
   };
+
+  # Private windows as launcher entries of their own. Every browser's desktop
+  # file already has a new-private-window action, but the launcher only lists
+  # entries, not actions. Commands go through PATH so they pick up the
+  # vivaldi override above and the system-wide firefox (modules/firefox.nix).
+  xdg.desktopEntries.brave-private =
+    privateWindow "Brave (Private)" "brave --incognito"
+      "${pkgs.brave}/share/icons/hicolor/256x256/apps/brave-browser.png";
+  xdg.desktopEntries.vivaldi-private =
+    privateWindow "Vivaldi (Private)" "vivaldi --incognito"
+      "${vivaldi}/share/icons/hicolor/256x256/apps/vivaldi.png";
+  # 128px is the largest Firefox ships.
+  xdg.desktopEntries.firefox-private =
+    privateWindow "Firefox (Private)" "firefox --private-window"
+      "${pkgs.firefox-unwrapped}/lib/firefox/browser/chrome/icons/default/default128.png";
 
   # Creates ~/Documents/obsidian_vault so the sandbox bind target exists before
   # the vault itself does. Without it, nixpak binds a non-existent path and
