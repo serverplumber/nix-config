@@ -223,6 +223,8 @@ in
     shellcheck
     ruff
     mdformat
+    golangci-lint # loads packages with the project's own go, from its devShell
+    (import ./golangci.nix { inherit pkgs; }).init
 
     ### task runner — this repo and krump both use it
     just

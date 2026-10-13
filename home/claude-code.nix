@@ -4,16 +4,17 @@ let
     inherit pkgs;
     direnv = config.programs.direnv.package;
   };
+  golangci = import ./golangci.nix { inherit pkgs; };
 
   # Runs a Go tool in the project's own environment: `claude-go DIR CMD...`.
-  # Both gopls below and claude-gofmt-hook go through this, so the language
-  # server and the formatter always resolve the same Go.
+  # Both gopls below and claude-go-hook go through this, so the language
+  # server, the formatter and the linter always resolve the same Go.
   #
   # The project wins. Its direnv environment is loaded first, so a devShell
   # that provides `go` and `gopls` puts both on PATH. nixpkgs' copies are then
   # appended, not prepended: a fallback for a project whose shell has no gopls
-  # (or no Go at all, like a scratch file), never a replacement for one that
-  # does.
+  # or golangci-lint (or no Go at all, like a scratch file), never a
+  # replacement for one that does.
   #
   # The append happens in a second stage that runs *inside* the loaded
   # environment, not before it. Appending first does not survive: when the
@@ -27,6 +28,8 @@ let
   # compiled with an older Go than the project's — nixpkgs' own comment on
   # the package says so, and builds it with buildGoLatestModule for that
   # reason (Go 1.27.1 at time of writing, ahead of every project in ~/code).
+  # golangci-lint has the same limit, refuses outright past it, and is built
+  # the same way.
   # A project that moves past the pin's newest Go needs gopls in its own
   # devShell; pkgs.gopls from that project's nixpkgs is built with the same
   # pin's latest Go, which is the sync.
@@ -37,11 +40,11 @@ let
   # direnv's "loading ..." lines go to stderr, as does an .envrc's own stdout,
   # so gopls' JSON-RPC stream on stdout stays clean. They cannot be silenced
   # here: direnv 2.37 ignores DIRENV_LOG_FORMAT under `direnv exec`, empty or
-  # "-" (tested), so claude-gofmt-hook strips them from its messages instead.
+  # "-" (tested), so claude-go-hook strips them from its messages instead.
   claude-go-fallback = pkgs.writeShellApplication {
     name = "claude-go-fallback";
     text = ''
-      export PATH="$PATH:${pkgs.gopls}/bin:${pkgs.go}/bin"
+      export PATH="$PATH:${pkgs.gopls}/bin:${pkgs.golangci-lint}/bin:${pkgs.go}/bin"
       exec "$@"
     '';
   };
@@ -202,20 +205,40 @@ let
            else {} end)'
     '';
   };
-  # And for Go: `gopls imports` (add missing, drop unused), then `gopls
-  # format` (gofmt). gopls rather than goimports or a bare gofmt so the
-  # formatter is the same binary, against the same Go, as the language server
-  # — resolved per project through claude-go above, from the file's own
-  # directory, since a hook runs in the session's cwd and not the file's.
+  # And for Go: `gopls imports` (add missing, drop unused) and `gopls format`
+  # (gofmt), then golangci-lint's own formatters and linters. gopls rather
+  # than goimports or a bare gofmt so the baseline formatter is the same
+  # binary, against the same Go, as the language server — resolved per
+  # project through claude-go above, from the file's own directory, since a
+  # hook runs in the session's cwd and not the file's. The cd is for
+  # golangci-lint: it finds the module from its cwd, not from its arguments.
   #
-  # Formatting only, unlike claude-ruff-hook: Go has its language server in
-  # the .go slot, so its diagnostics already come back that way. A failure
-  # (a syntax error mid-edit) goes to the user as a systemMessage, as
-  # nixfmt's does.
-  claude-gofmt-hook = pkgs.writeShellApplication {
-    name = "claude-gofmt-hook";
+  # golangci-lint is what applies a line length, and only to a repo that
+  # asked for one. The config is the repo's own .golangci.* if it has one;
+  # failing that, ./golangci.nix's default if the module path is the user's
+  # own; failing both, golangci-lint does not run and the file gets gofmt
+  # alone — which is what a Go repo with no config is saying it wants.
+  #
+  # The hook finds the repo's config itself and always passes -c, because
+  # golangci-lint's own search walks up to / and would cross out of a nested
+  # checkout: charpy keeps clones of other people's modules under its tree,
+  # and from inside one of those it would find charpy's config. The search
+  # here stops at the first directory holding a .git.
+  #
+  # Lint findings go back as additionalContext, as claude-ruff-hook's do,
+  # because gopls in the .go slot knows nothing of lll or the project's
+  # linter set. `run` covers the whole package; only the edited file's
+  # findings are kept, and typecheck ones are dropped as gopls' to report.
+  # Exit 1 means findings; anything else is a failure for the user.
+  #
+  # Skipped outside a module: gci's localmodule section reads go.mod and
+  # fails without one, so a scratch file gets only the gopls steps.
+  claude-go-hook = pkgs.writeShellApplication {
+    name = "claude-go-hook";
     runtimeInputs = [
       pkgs.coreutils
+      pkgs.gnugrep
+      pkgs.gnused
       pkgs.jq
       claude-go
     ];
@@ -226,12 +249,67 @@ let
         *) exit 0 ;;
       esac
       [ -f "$file" ] || exit 0
+      file=$(realpath "$file")
       dir=$(dirname "$file")
-      if ! err=$(claude-go "$dir" gopls imports -w "$file" 2>&1 &&
-        claude-go "$dir" gopls format -w "$file" 2>&1); then
-        err=$(sed '/direnv: /d' <<<"$err")
-        jq -nc --arg m "gopls failed to format $file: $err" '{systemMessage: $m}'
+      cd "$dir"
+
+      findings="" failure=""
+      if ! out=$(claude-go . gopls imports -w "$file" 2>&1 &&
+        claude-go . gopls format -w "$file" 2>&1); then
+        failure=$out
       fi
+
+      mod=$dir
+      while [ "$mod" != / ] && [ ! -e "$mod/go.mod" ]; do
+        mod=$(dirname "$mod")
+      done
+
+      cfg="" d=$dir
+      while [ -z "$cfg" ]; do
+        for f in "$d"/.golangci.{yml,yaml,toml,json}; do
+          if [ -e "$f" ]; then
+            cfg=$f
+            break
+          fi
+        done
+        if [ -e "$d/.git" ] || [ "$d" = / ]; then break; fi
+        d=$(dirname "$d")
+      done
+      if [ -z "$cfg" ] && [ -e "$mod/go.mod" ]; then
+        modpath=$(sed -n 's/^module[[:space:]]*"\{0,1\}\([^"[:space:]]*\).*/\1/p' \
+          "$mod/go.mod" | head -n 1)
+        case $modpath in
+          ${golangci.owner}*) cfg=${golangci.config} ;;
+        esac
+      fi
+
+      if [ -z "$failure" ] && [ -n "$cfg" ] && [ -e "$mod/go.mod" ]; then
+        if ! out=$(claude-go . golangci-lint fmt -c "$cfg" "$file" 2>&1); then
+          failure=$out
+        else
+          rc=0
+          out=$(claude-go . golangci-lint run -c "$cfg" --path-mode=abs \
+            --show-stats=false --output.text.colors=false \
+            --output.text.print-issued-lines=false \
+            --max-issues-per-linter=0 --max-same-issues=0 . 2>&1) || rc=$?
+          case $rc in
+            0) ;;
+            1) findings=$(grep -F "$file:" <<<"$out" | grep -v '(typecheck)$') || true ;;
+            *) failure=$out ;;
+          esac
+        fi
+      fi
+
+      failure=$(sed '/direnv: /d' <<<"$failure")
+      [ -n "$findings$failure" ] || exit 0
+      jq -nc --arg f "$file" --arg findings "$findings" --arg failure "$failure" '
+        {}
+        + (if $findings != "" then {hookSpecificOutput: {
+             hookEventName: "PostToolUse",
+             additionalContext: "golangci-lint findings:\n\($findings)"}}
+           else {} end)
+        + (if $failure != "" then {systemMessage: "Go tooling failed on \($f): \($failure)"}
+           else {} end)'
     '';
   };
 in
@@ -555,8 +633,8 @@ in
             }
             {
               type = "command";
-              command = "${claude-gofmt-hook}/bin/claude-gofmt-hook";
-              statusMessage = "gofmt";
+              command = "${claude-go-hook}/bin/claude-go-hook";
+              statusMessage = "golangci-lint";
               # Longer than the others: the first gopls run in a module loads
               # its packages, and a cold direnv may build the devShell.
               timeout = 120;
