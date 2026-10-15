@@ -6,6 +6,7 @@
   gnused,
   coreutils,
   noctalia,
+  wallpaper-pool-link,
 }:
 
 # Keep the wallpaper on screen: copy it out of the pool, which evicts on a
@@ -18,11 +19,11 @@
 # in both, so two posts with the same title never collide, and a second press
 # on the same image is recognised whichever name the first one chose.
 #
-# The copy lands in the rotation directory, so it stays in rotation.
-# pkgs/wallpaper-pool-link.nix only ever removes symlinks into the pool, so a
-# plain file there is never touched. It does not join the shuffle, though:
-# rotation is alphabetical, so saved files show up as one run outside the
-# `pool-NN` block.
+# Saved files are linked into the rotation alongside the pool, so the copy is
+# relinked straight away to take its place in the brightness arc. It is
+# handed to pkgs/wallpaper-pool-link.nix as the image to keep on screen, so
+# saving does not change what is showing. The pool original drops out of the
+# arc from then on, in favour of the copy.
 writeShellApplication {
   name = "wallpaper-save";
 
@@ -32,6 +33,7 @@ writeShellApplication {
     gnused
     coreutils
     noctalia
+    wallpaper-pool-link
   ];
 
   text = ''
@@ -85,6 +87,7 @@ writeShellApplication {
     # copy; the extension keeps it out of the image filter until the rename.
     cp "$img" "$dir/$file.part"
     mv "$dir/$file.part" "$dir/$file"
+    wallpaper-pool-link "$dir/$file"
     notify "Wallpaper saved" "$file"
   '';
 

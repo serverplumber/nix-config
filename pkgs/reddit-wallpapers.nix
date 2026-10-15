@@ -39,7 +39,7 @@
 
 # Companion to pkgs/wallhaven-wallpapers.nix: fills the same pool from a
 # subreddit, for noctalia's directory-based rotation. The pool lives in the
-# units' state directory and is linked into ~/Pictures/Wallpapers by
+# units' state directory and is linked into ~/Pictures/Wallpapers/rotation by
 # pkgs/wallpaper-pool-link.nix. See home/wallpapers.nix for the wiring.
 #
 # It reads the Atom feed (`/new.rss`), NOT the JSON API. This is not a style

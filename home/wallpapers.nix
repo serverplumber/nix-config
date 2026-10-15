@@ -11,9 +11,11 @@ let
   };
   wallpaper-blackout = pkgs.callPackage ../pkgs/wallpaper-blackout.nix {
     noctalia = config.programs.noctalia.package;
+    inherit wallpaper-pool-link;
   };
   wallpaper-save = pkgs.callPackage ../pkgs/wallpaper-save.nix {
     noctalia = config.programs.noctalia.package;
+    inherit wallpaper-pool-link;
   };
 
   # Both sources fill the same directory and want the same failure handling,
@@ -45,7 +47,7 @@ let
       # with ~/.config/wallpaper-pool present, systemd takes that for a
       # pre-254 state directory and symlinks to it instead.
       StateDirectory = "wallpaper-pool-state";
-      # Reshuffle the ~/Pictures/Wallpapers links after either pool changes.
+      # Rebuild the ~/Pictures/Wallpapers/rotation arc after either pool changes.
       # Skipped when ExecStart fails, which leaves the old links in place.
       ExecStartPost = pkgs.lib.getExe wallpaper-pool-link;
     };

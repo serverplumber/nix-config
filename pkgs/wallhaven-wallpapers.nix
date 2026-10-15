@@ -45,7 +45,7 @@
 # static image pool for noctalia's own directory-based rotation — see
 # home/wallpapers.nix for why this exists instead of driving noctalia's
 # built-in Wallhaven browse panel. pkgs/wallpaper-pool-link.nix links the
-# pool into ~/Pictures/Wallpapers.
+# pool into ~/Pictures/Wallpapers/rotation.
 #
 # Every file this script writes or deletes is named `wallhaven_<id>.<ext>`,
 # matching the naming noctalia's own Wallhaven panel uses for manual
