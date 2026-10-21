@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 {
   # The baseline for a workstation: packages every user of a machine of this
   # type would want in a working session, whatever they use it for. A role,
@@ -37,4 +37,30 @@
     # is pointed at it in home/claude-code.nix.
     nixd
   ];
+
+  # Mount the SD card slot on access. udisks2 runs, but only mounts when a
+  # client asks, and niri/Hyprland have none — an inserted card just sat
+  # unmounted. autofs does it at the system level, the same in every session.
+  # sdbackup (modules/sdbackup.nix) finds its card through this.
+  #
+  # Keyed by slot (/dev/mmcblk0), which assumes a card formatted whole-device
+  # with no partition table. `--ghost` makes /media/sdcard visible in a
+  # directory listing before it is mounted, so a glob over /media/*/ triggers
+  # the mount rather than seeing nothing. The short timeout unmounts an idle
+  # card quickly, so it spends as little time as possible mounted-and-pullable.
+  #
+  # exFAT has no Unix ownership, so it is assigned at mount time: group
+  # `users` with group write, i.e. any normal user of the workstation.
+  services.autofs =
+    let
+      mediaMap = pkgs.writeText "auto.media" ''
+        sdcard -fstype=exfat,rw,uid=0,gid=${toString config.users.groups.users.gid},fmask=0117,dmask=0007 :/dev/mmcblk0
+      '';
+    in
+    {
+      enable = true;
+      autoMaster = ''
+        /media file:${mediaMap} --ghost --timeout=60
+      '';
+    };
 }

@@ -59,6 +59,7 @@
     group = "stablefly";
     extraGroups = [
       "wheel"
+      "users" # removable media — see modules/workstation.nix
       "networkmanager"
       "video"
       "audio"

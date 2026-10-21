@@ -40,9 +40,9 @@ readonly EX_INTERRUPTED=40   # card pulled, or we were killed, mid-run
 : "${SDBACKUP_DUE_DAYS:=7}"
 : "${SDBACKUP_PASSWORD_FILE:=$HOME/.config/restic/password}"
 : "${SDBACKUP_STATE_DIR:=${XDG_STATE_HOME:-$HOME/.local/state}/sdbackup}"
-# Where automounted removable media shows up. A list, because nothing in this
-# config declares an automounter yet and the eventual answer may not be the
-# /run/media/<user>/<label> that Bluefin used to give us. Overridable so the
+# Where automounted removable media shows up. A list, because automounters
+# disagree: modules/workstation.nix's autofs uses /media/sdcard, while a udisks2
+# client (or Plasma) gives /run/media/<user>/<label>. Overridable so the
 # card-detection path can be exercised without a real card in a real slot.
 : "${SDBACKUP_SEARCH_PATHS:=/run/media /media /mnt}"
 
