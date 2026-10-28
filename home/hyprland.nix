@@ -311,26 +311,32 @@ in
 
       ------------------------------------------------------------- workspaces
       -- sidra gets a workspace of its own, on the laptop panel, bound to
-      -- Mod+0 below. Two keys in the rule, each load-bearing:
+      -- Mod+0 below. Three pieces, each load-bearing:
       --
-      --   monitor      pins it to the internal panel. Without it the
-      --                workspace lands wherever the focus happens to be when
-      --                it is first created.
-      --   on_created_empty  runs when the workspace comes into existence with
-      --                no windows, which is what makes it self-populating:
-      --                press Mod+0 on a fresh session and sidra starts.
+      --   workspace rule   `monitor` pins it to the internal panel. Without it
+      --                    the workspace lands wherever the focus happens to
+      --                    be when it is first created.
+      --   created handler  starts sidra when the workspace comes into
+      --                    existence with no windows, which is what makes it
+      --                    self-populating: press Mod+0 on a fresh session and
+      --                    sidra starts.
+      --   window rule      puts sidra's window there, however it was started.
       --
-      -- `persistent = true` was here as a third, removed 2026-09-24: it
-      -- silently defeated on_created_empty. persistent is what makes the
-      -- workspace already exist, so focusing it is not a creation and the hook
-      -- never fires. With it set, sidra never started and the Hyprland log
-      -- held no mention of it at all; dropping it live and focusing the
-      -- workspace started sidra at once, and a throwaway rule of the same
-      -- shape fired its hook on creation as a control.
+      -- The handler replaces the workspace rule's on_created_empty key,
+      -- deprecated as of Hyprland b3fd5b4 (`hyprctl deprecated-config`). That
+      -- key never placed the window anyway: it spawns with a rule bound to the
+      -- launched PID, which is bwrap, while the window belongs to bwrap's
+      -- child — the same trap as the translucent group above. Only the
+      -- spinner landed here; the main window opened wherever focus was. So
+      -- placement is the window rule's job, and the handler just runs the
+      -- command.
       --
-      -- The cost is the thing persistent bought: the workspace does not exist
-      -- while empty, so it is absent from noctalia's workspace list until
-      -- first use. Accepted — on-demand start is the point of this rule.
+      -- Never make the workspace persistent: it then already exists, so
+      -- focusing it is not a creation and the handler never fires. Measured
+      -- 2026-09-24 against on_created_empty, which hangs off the same
+      -- creation. The cost is that the workspace is absent from noctalia's
+      -- workspace list until first use. Accepted — on-demand start is the
+      -- point.
       --
       -- Re-testing this live: hl.workspace_rule MERGES into the existing rule,
       -- so omitting a key does not unset it. `persistent = false` has to be
@@ -341,13 +347,22 @@ in
       -- name that fails to resolve fails silently.
       --
       -- niri reaches the same result differently (home/niri.nix): it has no
-      -- on-created-empty hook at all, so the app is started at login and a
-      -- window rule puts it on the workspace.
+      -- creation hook at all, so the app is started at login and a window
+      -- rule puts it on the workspace.
       hl.workspace_rule({
         workspace = "name:sidra",
         monitor = "eDP-1",
-        on_created_empty = "${sidra}/bin/sidra",
       })
+
+      -- ws.name is the display name ("sidra"); the "name:sidra" form is
+      -- ws.addressable_name.
+      hl.on("workspace.created", function(ws)
+        if ws.name == "sidra" and ws.is_empty then
+          hl.exec_cmd("${sidra}/bin/sidra")
+        end
+      end)
+
+      hl.window_rule({ name = "sidra-workspace", match = { class = "^[sS]idra$" }, workspace = "name:sidra" })
 
       ---------------------------------------------------------------- startup
       -- noctalia is started by the compositor, not by a systemd user unit;
