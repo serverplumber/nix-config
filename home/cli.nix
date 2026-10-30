@@ -23,6 +23,10 @@ let
   # Anthropic's `ant` (Claude Developer Platform CLI) — not in nixpkgs, and
   # pkgs.ant is a different program (Apache Ant). See pkgs/ant-cli.nix.
   ant-cli = pkgs.callPackage ../pkgs/ant-cli.nix { };
+
+  # Hand a captive-portal session from the phone to the laptop. See
+  # pkgs/mimic.nix.
+  mimic = pkgs.callPackage ../pkgs/mimic.nix { };
 in
 {
   # User CLI only — things you would want on a machine you never wrote code on.
@@ -80,6 +84,7 @@ in
       # claude-code is installed by programs.claude-code in ./claude-code.nix,
       # which owns its MCP config too — see the comment there.
       ant-cli
+      mimic
 
       ### search / navigate
       bat
